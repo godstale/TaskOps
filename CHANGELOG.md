@@ -79,6 +79,20 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 
 ---
 
+## [0.2.2] - 2026-03-15
+
+### Added
+
+- `README.ko.md` — Korean translation of README, linked from `README.md`
+
+### Changed
+
+- `SKILL.md`, `skills/taskops.md`, `skills/taskops-gemini.md` — rewritten in English only (removed bilingual headers)
+- `SKILL.md` / `skills/taskops.md` description updated to trigger automatic invocation: agent invokes TaskOps without explicit user instruction when a plan is finalized or a multi-step project starts
+- `skills/taskops.md` / `skills/taskops-gemini.md` — added TaskBoard launch guidance at the start of Phase 3 (Execution)
+- `AGENTS.md`, `CLAUDE.md` — rewritten in English only, version updated to v0.2.2
+- `README.md` — rewritten in English only, added link to `README.ko.md`
+
 ## [Unreleased]
 
 - TBD

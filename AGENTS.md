@@ -1,11 +1,10 @@
 # TaskOps
 
 TaskOps is a skill for AI Agents (Claude Code, Gemini CLI) that manages complex projects using ETS (Epic-Task-SubTask) structure.
-TaskOps는 AI Agent용 프로젝트 관리 skill로, 복잡한 프로젝트를 ETS 구조로 분해하여 관리합니다.
 
 ## Project Status
 
-- Phase: Released (v0.2.0)
+- Phase: Released (v0.2.2)
 - Design Doc: `docs/design/TASKOPS_DESIGN.md`
 
 ## Architecture
