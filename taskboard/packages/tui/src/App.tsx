@@ -1,6 +1,7 @@
 import React from 'react'
-import { Box, Text, useInput } from 'ink'
+import { Box, Text } from 'ink'
 import { useTaskBoard, Screen } from './useTaskBoard'
+import { useSafeInput } from './useSafeInput'
 import { Dashboard } from './screens/Dashboard'
 import { TaskOperations } from './screens/TaskOperations'
 import { Resources } from './screens/Resources'
@@ -21,7 +22,7 @@ interface Props {
 export function App({ dbPath }: Props) {
   const board = useTaskBoard(dbPath)
 
-  useInput((input, key) => {
+  useSafeInput((input, key) => {
     if (input === 'q' || input === 'Q') process.exit(0)
     if (input === 'r' || input === 'R') board.reload()
     if (key.tab) {
