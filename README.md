@@ -1,2 +1,132 @@
 # TaskOps
-TaskOps is a skill for AI Agents that manages complex projects using ETS (Epic-Task-SubTask) structure.
+
+**AI Agent Project Management Skill** — Manage complex projects using ETS (Epic-Task-SubTask) structure with SQLite-backed tracking, workflow management, and operations monitoring.
+
+Supports **Claude Code** (with hooks) and **Gemini CLI** (explicit recording).
+
+---
+
+## What It Does
+
+TaskOps gives AI Agents a structured way to manage multi-step projects across sessions:
+
+- **ETS Hierarchy**: Decompose projects into Epics → Tasks → SubTasks
+- **Workflow Engine**: Sequential and parallel execution with dependency tracking
+- **Operations Log**: Record start/progress/complete/error/interrupt events per task
+- **Auto Reports**: Generate `TODO.md` and `TASK_OPERATIONS.md` from DB state
+- **Resource Tracking**: Link files to tasks
+- **Settings Store**: Key-value config synced to `SETTINGS.md`
+
+## Quick Start
+
+```bash
+git clone https://github.com/godstale/TaskOps.git
+cd my-project
+
+# Initialize TaskOps in your project
+python -m cli init --name "My Project" --prefix MYP --path .
+
+# Plan: create epics and tasks
+python -m cli epic create --title "Core Feature"
+python -m cli task create --parent MYP-E001 --title "Implement API"
+
+# Set workflow order
+python -m cli workflow set-order MYP-T001
+python -m cli query generate-todo
+
+# Execute
+python -m cli workflow next          # -> MYP-T001
+python -m cli task update MYP-T001 --status in_progress
+python -m cli op start MYP-T001 --platform claude_code
+# ... do the work ...
+python -m cli task update MYP-T001 --status done
+python -m cli op complete MYP-T001 --summary "API complete"
+python -m cli query generate-todo
+```
+
+See [docs/usage/quickstart.md](docs/usage/quickstart.md) for the full guide.
+
+## Using as a Skill
+
+### Claude Code
+
+Add `skills/taskops.md` as a Claude Code skill. Then use the `/taskops` slash command to start managing a project.
+
+Configure hooks in `.claude/settings.json` to auto-record operations:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|Bash",
+        "command": "bash /path/to/TaskOps/hooks/on_tool_use.sh"
+      }
+    ]
+  }
+}
+```
+
+### Gemini CLI
+
+Use `skills/taskops-gemini.md`. Gemini CLI has no hooks — the skill instructs the agent to call `op` commands explicitly at each step.
+
+## Project Structure
+
+```
+TaskOps/
+├── cli/                     # Python CLI package
+│   ├── __main__.py          # Entry point: python -m cli
+│   ├── taskops.py           # argparse routing
+│   ├── db/                  # DB layer (schema, connection)
+│   ├── commands/            # Subcommand modules
+│   └── templates/           # MD file templates
+├── hooks/                   # Claude Code hook scripts
+│   ├── on_task_start.sh
+│   ├── on_task_complete.sh
+│   └── on_tool_use.sh
+├── skills/                  # AI Agent skill documents
+│   ├── taskops.md           # Claude Code skill
+│   ├── taskops-gemini.md    # Gemini CLI skill
+│   └── fragments/           # Shared instruction fragments
+├── tests/                   # Test suite
+│   ├── unit/                # 102 unit tests
+│   └── integration/         # Integration tests
+└── docs/usage/              # Documentation
+```
+
+## CLI Reference
+
+See [docs/usage/commands.md](docs/usage/commands.md) for the full command reference.
+
+Quick overview:
+
+| Command | Description |
+|---------|-------------|
+| `init --name --prefix --path` | Initialize project |
+| `epic create/list/show/update/delete` | Epic CRUD |
+| `task create/list/show/update/delete` | Task/SubTask CRUD |
+| `objective create/list/update/delete` | Objective CRUD |
+| `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow management |
+| `op start/progress/complete/error/interrupt/log` | Operations recording |
+| `resource add/list` | Resource management |
+| `query status/tasks/generate-todo/generate-ops` | Status queries and reports |
+| `setting set/get/list/delete` | Settings management |
+
+## Requirements
+
+- Python 3.10+
+- No external dependencies (stdlib only: `sqlite3`, `argparse`, `json`, `string`)
+
+## Testing
+
+```bash
+# Unit tests
+python -m pytest tests/unit/ -v
+
+# Integration tests (requires bash)
+python -m pytest tests/integration/ -v
+
+# Full suite
+python -m pytest tests/ -v
+```
