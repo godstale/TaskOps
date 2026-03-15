@@ -1,0 +1,13 @@
+{
+  "name": "taskboard",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "dev:tui": "pnpm --filter @taskboard/tui dev",
+    "dev:electron": "pnpm --filter @taskboard/electron dev"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
