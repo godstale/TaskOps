@@ -69,7 +69,7 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 
 ---
 
-## [0.1.1] - 2026-03-15
+## [0.2.1] - 2026-03-15
 
 ### Added
 
