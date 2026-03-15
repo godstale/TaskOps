@@ -1,0 +1,23 @@
+#!/bin/bash
+# Hook: Called after tool use (Edit, Write, Bash)
+# TaskOps Hook: 도구 사용 후 진행 상황 기록
+# Triggered by PostToolUse hook in Claude Code
+
+TASKOPS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+if command -v cygpath &>/dev/null; then
+    TASKOPS_ROOT="$(cygpath -w "$TASKOPS_ROOT")"
+fi
+export PYTHONPATH="$TASKOPS_ROOT${PYTHONPATH:+;$PYTHONPATH}"
+DB_PATH=$(find . -maxdepth 2 -name "taskops.db" 2>/dev/null | head -1)
+
+if [ -z "$DB_PATH" ]; then
+    exit 0
+fi
+
+ACTIVE_TASK=$(python -m cli --db "$DB_PATH" workflow current 2>/dev/null)
+
+if [ -n "$ACTIVE_TASK" ]; then
+    TOOL_NAME="${CLAUDE_TOOL_NAME:-unknown}"
+    python -m cli --db "$DB_PATH" op progress "$ACTIVE_TASK" \
+        --summary "Tool used: $TOOL_NAME" 2>/dev/null
+fi
