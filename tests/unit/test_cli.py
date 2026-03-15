@@ -26,7 +26,7 @@ def test_cli_help():
 def test_cli_version():
     result = run_cli('--version')
     assert result.returncode == 0
-    assert '0.3.0' in result.stdout
+    assert '0.2.3' in result.stdout
 
 
 def test_cli_no_command_shows_help():

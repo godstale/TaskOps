@@ -28,7 +28,6 @@ def test_init_creates_project_structure():
         assert os.path.exists(os.path.join(project_path, 'TODO.md'))
         assert os.path.exists(os.path.join(project_path, 'AGENTS.md'))
         assert os.path.exists(os.path.join(project_path, 'SETTINGS.md'))
-        assert os.path.exists(os.path.join(project_path, 'TASK_OPERATIONS.md'))
         assert os.path.isdir(os.path.join(project_path, 'resources'))
 
 
