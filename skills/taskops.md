@@ -117,6 +117,28 @@ python -m cli workflow set-parallel --group "auth-group" PRJ-T002 PRJ-T003
 python -m cli workflow add-dep PRJ-T004 --depends-on PRJ-T002 PRJ-T003
 ```
 
+### Updating the Plan
+
+When the user modifies the project plan (adds, removes, or renames tasks or epics), apply changes to the DB before continuing:
+
+```bash
+python -m cli plan update --changes '<json>'
+```
+
+JSON format:
+```json
+{
+  "create": [
+    {"type": "epic", "title": "New Epic"},
+    {"type": "task", "title": "New Task", "parent_id": "PRJ-E001"}
+  ],
+  "update": [{"id": "PRJ-T001", "title": "...", "status": "..."}],
+  "delete": [{"id": "PRJ-T002"}]
+}
+```
+
+Note: `parent_id` is **required** for `type: "task"` and must reference an existing epic or task. Any of `create`, `update`, `delete` may be omitted. After a successful update, `TODO.md` is regenerated automatically.
+
 ### Generate TODO.md
 
 ```bash
@@ -314,6 +336,7 @@ python -m cli query generate-todo
 | `epic create/list/show/update/delete` | Epic CRUD |
 | `task create/list/show/update/delete` | Task/SubTask CRUD |
 | `objective create/list/update/delete` | Objective CRUD |
+| `plan update --changes <json>` | Update plan: create/update/delete tasks and epics |
 | `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow management |
 | `op start/progress/complete/error/interrupt/log` | Operations recording |
 | `resource add/list` | Resource management |
