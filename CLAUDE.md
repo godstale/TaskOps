@@ -5,8 +5,8 @@ TaskOps는 AI Agent용 프로젝트 관리 skill로, 복잡한 프로젝트를 E
 
 ## Project Status
 
-- Phase: Design (설계 완료, 구현 대기)
-- Design Doc: `docs/design/2026-03-15-taskops-design.md`
+- Phase: Released (v0.2.0)
+- Design Doc: `docs/design/TASKOPS_DESIGN.md`
 
 ## Architecture
 

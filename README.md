@@ -16,6 +16,7 @@ TaskOps gives AI Agents a structured way to manage multi-step projects across se
 - **Auto Reports**: Generate `TODO.md` and `TASK_OPERATIONS.md` from DB state
 - **Resource Tracking**: Link files to tasks
 - **Settings Store**: Key-value config synced to `SETTINGS.md`
+- **Visual Monitoring**: Use [TaskBoard](https://github.com/godstale/TaskBoard) to view project status in a live GUI (TUI or Electron desktop app)
 
 ## Quick Start
 
@@ -45,6 +46,26 @@ python -m cli query generate-todo
 ```
 
 See [docs/usage/quickstart.md](docs/usage/quickstart.md) for the full guide.
+
+## Monitoring with TaskBoard
+
+[TaskBoard](https://github.com/godstale/TaskBoard) is a companion GUI that reads the TaskOps SQLite database in real-time and displays your project status visually. It runs as a **terminal UI (TUI)** or a **desktop Electron app**, and automatically refreshes whenever the DB changes.
+
+```bash
+git clone https://github.com/godstale/TaskBoard.git
+cd TaskBoard
+pnpm install
+
+# TUI (terminal)
+pnpm --filter @taskboard/tui dev -- --path /path/to/your-project
+
+# Electron (desktop)
+pnpm --filter @taskboard/electron dev
+```
+
+TaskBoard는 읽기 전용으로 동작하며, TaskOps DB에 쓰기 작업은 하지 않습니다. AI Agent가 작업을 진행하는 동안 진행 상황을 실시간으로 모니터링할 때 사용하세요.
+
+---
 
 ## Using as a Skill
 

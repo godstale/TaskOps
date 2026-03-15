@@ -1,9 +1,11 @@
 # ignore unintended folders
+node_modules/
 __pycache__/
 .pytest_cache/
 *.egg-info/
 dist/
 build/
+release/
 .vscode/
 docs/design/
 docs/plan/
@@ -13,4 +15,6 @@ docs/img/
 *.pyc
 *.pyo
 *.db
-TODO.md
+!taskboard/fixtures/fixture.db
+pnpm-debug.log*
+.DS_Store

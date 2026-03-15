@@ -217,3 +217,31 @@ python -m cli setting list
 | `setting set/get/list/delete` | Settings management |
 
 All commands use: `python -m cli [--db path] <command> <subcommand> [options]`
+
+---
+
+## Visualizing with TaskBoard / 시각화 도구 TaskBoard
+
+TaskBoard는 TaskOps DB를 읽기 전용으로 시각화하는 별도 도구입니다.
+사용자가 프로젝트 진행 상황을 GUI로 보고 싶을 때 설치를 안내하세요.
+
+**설치 (Install)**
+
+```bash
+git clone https://github.com/godstale/TaskBoard.git
+cd TaskBoard
+pnpm install
+```
+
+**실행 (Run)**
+
+```bash
+# TUI (터미널)
+pnpm --filter @taskboard/tui dev -- --path /path/to/taskops-root
+
+# Electron (데스크탑 앱)
+pnpm --filter @taskboard/electron dev
+```
+
+TaskBoard는 TaskOps가 생성한 `taskops.db`를 자동으로 감시하며, DB 변경 시 화면을 자동으로 갱신합니다.
+→ [TaskBoard GitHub](https://github.com/godstale/TaskBoard)
