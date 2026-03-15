@@ -1,56 +1,60 @@
 # TaskOps Implementation TODO
 
-> Status: Planning Complete, Awaiting Implementation Start
+> Status: Implementation In Progress
 > Plan: `docs/plans/2026-03-15-taskops-implementation.md`
 > Design: `docs/design/2026-03-15-taskops-design.md`
 
 ## Phase 1: Foundation / 기반 구축
 
-- [ ] **Task 1**: Project Scaffolding — 디렉토리 구조 생성
-- [ ] **Task 2**: DB Schema — SQLite 스키마 정의 (`cli/db/schema.py`)
-  - [ ] Unit Test: 테이블 생성 검증, 멱등성 검증 (`tests/unit/test_schema.py`)
-- [ ] **Task 3**: DB Connection — DB 연결 관리 (`cli/db/connection.py`)
-  - [ ] Unit Test: 연결 생성, 자동 초기화 검증 (`tests/unit/test_connection.py`)
-- [ ] **Task 4**: CLI Entry Point — argparse 진입점 (`cli/taskops.py`)
-  - [ ] Unit Test: help 출력, version 출력, 잘못된 커맨드 에러 (`tests/unit/test_cli.py`)
+- [x] **Task 1**: Project Scaffolding — 디렉토리 구조 생성
+- [x] **Task 2**: DB Schema — SQLite 스키마 정의 (`cli/db/schema.py`)
+  - [x] Unit Test: 테이블 생성 검증, 멱등성 검증 (`tests/unit/test_schema.py`) ✅ 5 passed
+- [x] **Task 3**: DB Connection — DB 연결 관리 (`cli/db/connection.py`)
+  - [x] Unit Test: 연결 생성, 자동 초기화 검증 (`tests/unit/test_connection.py`) ✅ 5 passed
+- [x] **Task 4**: CLI Entry Point — argparse 진입점 (`cli/taskops.py`)
+  - [x] Unit Test: help 출력, version 출력, 잘못된 커맨드 에러 (`tests/unit/test_cli.py`) ✅ 5 passed
 
 ## Phase 2: Core Commands / 핵심 커맨드
 
-- [ ] **Task 5**: `init` Command — 프로젝트 초기화
-  - [ ] Unit Test: 폴더/DB/템플릿 파일 생성 검증 (`tests/unit/test_cmd_init.py`)
-  - [ ] Integration Test: init → DB 상태 확인 → 파일 내용 검증 (`tests/integration/test_init_flow.py`)
-- [ ] **Task 6**: `epic` Command — Epic CRUD
-  - [ ] Unit Test: create/list/show/update/delete 각각 검증 (`tests/unit/test_cmd_epic.py`)
-- [ ] **Task 7**: `task` Command — Task/SubTask CRUD
-  - [ ] Unit Test: create/list/show/update/delete, SubTask 계층 검증 (`tests/unit/test_cmd_task.py`)
-- [ ] **Task 8**: `objective` Command — Objective CRUD
-  - [ ] Unit Test: 마일스톤/날짜 이벤트 생성, 상태 변경 (`tests/unit/test_cmd_objective.py`)
-- [ ] **Task 9**: `workflow` Command — Workflow 관리
-  - [ ] Unit Test: set-order, set-parallel, add-dep, next, current (`tests/unit/test_cmd_workflow.py`)
-  - [ ] Integration Test: 순차/병렬/의존성 시나리오별 next 결과 검증 (`tests/integration/test_workflow_flow.py`)
-- [ ] **Task 10**: `op` Command — Operations 기록
-  - [ ] Unit Test: start/progress/complete/error/interrupt/log (`tests/unit/test_cmd_operation.py`)
-- [ ] **Task 11**: `resource` Command — Resource 관리
-  - [ ] Unit Test: add/list, 타입별 필터링 (`tests/unit/test_cmd_resource.py`)
-- [ ] **Task 12**: `query` Command — 상태 조회/리포트
-  - [ ] Unit Test: status 요약, tasks 필터링 (`tests/unit/test_cmd_query.py`)
-  - [ ] Integration Test: generate-todo/generate-ops 결과 포맷 검증 (`tests/integration/test_query_generation.py`)
-- [ ] **Task 13**: `setting` Command — 설정 관리
-  - [ ] Unit Test: set/get/list/delete, SETTINGS.md 동기화 (`tests/unit/test_cmd_setting.py`)
+- [x] **Task 5**: `init` Command — 프로젝트 초기화
+  - [x] Unit Test: 폴더/DB/템플릿 파일 생성 검증 (`tests/unit/test_cmd_init.py`) ✅ 6 passed
+  - [x] Integration Test: init → DB 상태 확인 → 파일 내용 검증 (`tests/integration/test_init_flow.py`) ✅ 6 passed
+- [x] **Task 6**: `epic` Command — Epic CRUD
+  - [x] Unit Test: create/list/show/update/delete 각각 검증 (`tests/unit/test_cmd_epic.py`) ✅ 8 passed
+- [x] **Task 7**: `task` Command — Task/SubTask CRUD
+  - [x] Unit Test: create/list/show/update/delete, SubTask 계층 검증 (`tests/unit/test_cmd_task.py`) ✅ 12 passed
+- [x] **Task 8**: `objective` Command — Objective CRUD
+  - [x] Unit Test: 마일스톤/날짜 이벤트 생성, 상태 변경 (`tests/unit/test_cmd_objective.py`) ✅ 10 passed
+- [x] **Task 9**: `workflow` Command — Workflow 관리
+  - [x] Unit Test: set-order, set-parallel, add-dep, next, current (`tests/unit/test_cmd_workflow.py`) ✅ 13 passed
+  - [x] Integration Test: 순차/병렬/의존성 시나리오별 next 결과 검증 (`tests/integration/test_workflow_flow.py`) ✅ 5 passed
+- [x] **Task 10**: `op` Command — Operations 기록
+  - [x] Unit Test: start/progress/complete/error/interrupt/log (`tests/unit/test_cmd_operation.py`) ✅ 11 passed
+- [x] **Task 11**: `resource` Command — Resource 관리
+  - [x] Unit Test: add/list, 타입별 필터링 (`tests/unit/test_cmd_resource.py`) ✅ 8 passed
+- [x] **Task 12**: `query` Command — 상태 조회/리포트
+  - [x] Unit Test: status 요약, tasks 필터링 (`tests/unit/test_cmd_query.py`) ✅ 9 passed
+  - [x] Integration Test: generate-todo/generate-ops 결과 포맷 검증 (`tests/integration/test_query_generation.py`) ✅ 5 passed
+- [x] **Task 13**: `setting` Command — 설정 관리
+  - [x] Unit Test: set/get/list/delete, SETTINGS.md 동기화 (`tests/unit/test_cmd_setting.py`) ✅ 10 passed
 
 ## Phase 3: Integration / 통합
 
-- [ ] **Task 14**: Hook Scripts — Claude Code Hook 스크립트
-  - [ ] Integration Test: Hook 실행 → DB 상태 변경 검증 (`tests/integration/test_hooks.py`)
-- [ ] **Task 15**: Skill Doc (Claude Code) — Claude Code 용 Skill 문서
-- [ ] **Task 16**: Skill Doc (Gemini CLI) — Gemini CLI 용 Skill 문서
+- [x] **Task 14**: Hook Scripts — Claude Code Hook 스크립트
+  - [x] Integration Test: Hook 실행 → DB 상태 변경 검증 (`tests/integration/test_hooks.py`) ✅ 5 passed
+- [x] **Task 15**: Skill Doc (Claude Code) — Claude Code 용 Skill 문서 (`skills/taskops.md` + `skills/fragments/`)
+- [x] **Task 16**: Skill Doc (Gemini CLI) — Gemini CLI 용 Skill 문서 (`skills/taskops-gemini.md`)
 
 ## Phase 4: Finalization / 마무리
 
-- [ ] **Task 17**: Documentation — 사용 문서 작성
-- [ ] **Task 18**: E2E Integration Test — 전체 라이프사이클 통합 테스트
-  - [ ] init → epic → task → subtask → objective → workflow → op → query 전체 흐름 (`tests/integration/test_e2e.py`)
-- [ ] **Task 19**: Final Review — 전체 테스트 실행 및 최종 검토
+- [x] **Task 17**: Documentation — 사용 문서 작성
+  - [x] `docs/usage/quickstart.md`, `docs/usage/commands.md`, `README.md`
+- [x] **Task 18**: E2E Integration Test — 전체 라이프사이클 통합 테스트
+  - [x] init → epic → task → subtask → objective → workflow → op → query 전체 흐름 (`tests/integration/test_e2e.py`) ✅ 1 passed
+  - [x] Integration Test: init → DB 상태 확인 → 파일 내용 검증 (`tests/integration/test_init_flow.py`) ✅ 6 passed
+  - [x] Integration Test: 순차/병렬/의존성 시나리오별 next 결과 검증 (`tests/integration/test_workflow_flow.py`) ✅ 5 passed
+  - [x] Integration Test: generate-todo/generate-ops 결과 포맷 검증 (`tests/integration/test_query_generation.py`) ✅ 5 passed
+- [x] **Task 19**: Final Review — 전체 테스트 실행 및 최종 검토 ✅ 124 passed (102 unit + 22 integration)
 
 ## Test Structure / 테스트 구조
 
