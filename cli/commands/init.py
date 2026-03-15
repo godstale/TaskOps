@@ -59,7 +59,7 @@ def handle(args):
         'prefix': args.prefix,
         'timestamp': now,
     }
-    for tmpl_name in ['TODO.md.tmpl', 'AGENTS.md.tmpl', 'SETTINGS.md.tmpl', 'TASK_OPERATIONS.md.tmpl']:
+    for tmpl_name in ['TODO.md.tmpl', 'AGENTS.md.tmpl', 'SETTINGS.md.tmpl']:
         tmpl_path = os.path.join(TEMPLATE_DIR, tmpl_name)
         out_name = tmpl_name.replace('.tmpl', '')
         out_path = os.path.join(project_path, out_name)

@@ -51,8 +51,9 @@ python -m cli query tasks --status in_progress
 # Regenerate TODO.md from current state
 python -m cli query generate-todo
 
-# Generate operations report (TASK_OPERATIONS.md)
-python -m cli query generate-ops
+# Query operation history directly from DB
+python -m cli op log
+python -m cli op log --task <TASK_ID>
 ```
 
 ## Best Practices / 모범 사례

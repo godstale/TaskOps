@@ -121,10 +121,6 @@ def test_full_project_lifecycle():
             todo = f.read()
         assert '`done`' in todo
 
-        r = cli('--db', db, 'query', 'generate-ops')
-        assert r.returncode == 0
-        assert os.path.exists(os.path.join(proj, 'TASK_OPERATIONS.md'))
-
         # --- Phase 9: DB state verification ---
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row

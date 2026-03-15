@@ -4,7 +4,7 @@ TaskOps CLI 진입점. argparse 기반 서브커맨드 라우팅.
 import argparse
 import sys
 
-__version__ = "0.2.1"
+__version__ = "0.2.3"
 
 
 def build_parser():
@@ -27,6 +27,8 @@ def build_parser():
     from .commands.resource import register as register_resource
     from .commands.query import register as register_query
     from .commands.setting import register as register_setting
+    from .commands.project import register as register_project
+    from .commands.plan import register as register_plan
 
     register_init(subparsers)
     register_epic(subparsers)
@@ -37,6 +39,8 @@ def build_parser():
     register_resource(subparsers)
     register_query(subparsers)
     register_setting(subparsers)
+    register_project(subparsers)
+    register_plan(subparsers)
 
     return parser
 

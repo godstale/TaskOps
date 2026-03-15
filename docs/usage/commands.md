@@ -114,6 +114,54 @@ python -m cli objective delete OBJ_ID
 
 ---
 
+## `plan update` — Bulk Plan Updates
+
+When the user modifies the project plan (adds, removes, or renames tasks or epics), apply changes to the DB using a single command:
+
+```bash
+python -m cli plan update --changes '<json>'
+```
+
+### JSON Schema
+
+The `--changes` parameter accepts a JSON object with up to three keys:
+
+```json
+{
+  "create": [
+    {"type": "epic", "title": "New Epic"},
+    {"type": "epic", "title": "Another Epic", "desc": "Optional description"},
+    {"type": "task", "title": "New Task", "parent_id": "PRJ-E001"},
+    {"type": "task", "title": "SubTask", "parent_id": "PRJ-T001", "desc": "Optional"}
+  ],
+  "update": [
+    {"id": "PRJ-T001", "title": "Updated Title"},
+    {"id": "PRJ-E001", "title": "New Name", "status": "done"}
+  ],
+  "delete": [
+    {"id": "PRJ-T002"},
+    {"id": "PRJ-E003"}
+  ]
+}
+```
+
+### Requirements
+
+- **`create`**: Array of objects with `type` ("epic" or "task"), `title`, optional `desc`
+  - For `type: "task"`, `parent_id` is **required** and must reference an existing epic or task
+  - For `type: "epic"`, `parent_id` is ignored
+- **`update`**: Array of objects with `id` and any of `title`, `desc`, `status`
+- **`delete`**: Array of objects with `id` only
+
+### Notes
+
+- Any of `create`, `update`, `delete` may be omitted
+- After a successful update, `TODO.md` is regenerated automatically
+- IDs must match the pattern `PREFIX-T###` or `PREFIX-E###`
+- Parent references must exist in the database before update
+
+---
+
 ## `workflow` — Workflow Management
 
 ### `workflow set-order`
@@ -227,12 +275,6 @@ python -m cli query tasks [--status STATUS] [--epic EPIC_ID]
 python -m cli query generate-todo
 ```
 Regenerates `TODO.md` from current DB state.
-
-### `query generate-ops`
-```bash
-python -m cli query generate-ops
-```
-Generates `TASK_OPERATIONS.md` — full operation history report.
 
 ---
 

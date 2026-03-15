@@ -123,32 +123,3 @@ def test_query_generate_todo_subtasks():
         assert 'JWT Token' in content
 
 
-def test_query_generate_ops():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pp, db = setup_full_project(tmpdir)
-        result = run_cli('--db', db, 'query', 'generate-ops')
-        assert result.returncode == 0
-        assert 'regenerated' in result.stdout.lower()
-
-        with open(os.path.join(pp, 'TASK_OPERATIONS.md'), encoding='utf-8') as f:
-            content = f.read()
-
-        assert 'TST-T001' in content
-        assert 'Login API' in content
-        assert 'start' in content
-        assert 'progress' in content
-        assert 'complete' in content
-        assert 'claude_code' in content
-        assert 'Halfway done' in content
-
-
-def test_query_generate_ops_empty():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pp = os.path.join(tmpdir, 'test-proj')
-        run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
-        db = os.path.join(pp, 'taskops.db')
-        run_cli('--db', db, 'query', 'generate-ops')
-
-        with open(os.path.join(pp, 'TASK_OPERATIONS.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert 'No operations' in content

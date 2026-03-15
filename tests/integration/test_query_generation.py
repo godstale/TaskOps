@@ -1,5 +1,5 @@
 """Integration tests for query generation.
-query 생성 통합 테스트: generate-todo/generate-ops 결과 포맷 검증.
+query 생성 통합 테스트: generate-todo 결과 포맷 검증.
 """
 import os
 import subprocess
@@ -60,23 +60,3 @@ def test_generate_todo_reflects_status():
         assert '`done`' in content
 
 
-def test_generate_ops_creates_file():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        proj_path, db = setup_project(tmpdir)
-        run_cli('--db', db, 'op', 'start', 'QRY-T001', '--platform', 'claude_code')
-        result = run_cli('--db', db, 'query', 'generate-ops')
-        assert result.returncode == 0
-        assert os.path.exists(os.path.join(proj_path, 'TASK_OPERATIONS.md'))
-
-
-def test_generate_ops_contains_operation_records():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        proj_path, db = setup_project(tmpdir)
-        run_cli('--db', db, 'op', 'start', 'QRY-T001', '--platform', 'claude_code')
-        run_cli('--db', db, 'op', 'progress', 'QRY-T001', '--summary', 'Halfway done')
-        run_cli('--db', db, 'query', 'generate-ops')
-
-        with open(os.path.join(proj_path, 'TASK_OPERATIONS.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert 'start' in content
-        assert 'Halfway done' in content

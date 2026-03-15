@@ -159,3 +159,114 @@ def test_op_log_empty():
         pp, db = setup_project_with_task(tmpdir)
         result = run_cli('--db', db, 'op', 'log')
         assert 'No operations' in result.stdout
+
+
+def test_op_progress_with_tool_metadata():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        run_cli('--db', db, 'op', 'start', 'TST-T001')
+        result = run_cli(
+            '--db', db, 'op', 'progress', 'TST-T001',
+            '--summary', 'edited file',
+            '--tool', 'Edit',
+            '--skill', 'tdd',
+            '--mcp', 'context7'
+        )
+        assert result.returncode == 0
+
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT * FROM operations WHERE task_id='TST-T001' AND operation_type='progress'"
+        ).fetchone()
+        assert row['tool_name'] == 'Edit'
+        assert row['skill_name'] == 'tdd'
+        assert row['mcp_name'] == 'context7'
+        conn.close()
+
+
+def test_op_progress_metadata_optional():
+    """op progress without metadata args should still work."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        result = run_cli('--db', db, 'op', 'progress', 'TST-T001',
+                         '--summary', 'plain progress')
+        assert result.returncode == 0
+
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT tool_name, skill_name, mcp_name FROM operations "
+            "WHERE task_id='TST-T001' AND operation_type='progress'"
+        ).fetchone()
+        assert row['tool_name'] is None
+        assert row['skill_name'] is None
+        assert row['mcp_name'] is None
+        conn.close()
+
+
+def test_op_complete_with_metadata():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        run_cli('--db', db, 'op', 'start', 'TST-T001')
+        result = run_cli(
+            '--db', db, 'op', 'complete', 'TST-T001',
+            '--summary', 'all done',
+            '--tokens-in', '1200',
+            '--tokens-out', '450',
+            '--retry-count', '2',
+            '--duration', '90'
+        )
+        assert result.returncode == 0
+
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT * FROM operations WHERE task_id='TST-T001' AND operation_type='complete'"
+        ).fetchone()
+        assert row['input_tokens'] == 1200
+        assert row['output_tokens'] == 450
+        assert row['retry_count'] == 2
+        assert row['duration_seconds'] == 90
+        conn.close()
+
+
+def test_op_complete_metadata_optional():
+    """op complete without metadata args should still work."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        result = run_cli('--db', db, 'op', 'complete', 'TST-T001',
+                         '--summary', 'done')
+        assert result.returncode == 0
+
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT input_tokens, output_tokens, retry_count, duration_seconds "
+            "FROM operations WHERE task_id='TST-T001' AND operation_type='complete'"
+        ).fetchone()
+        assert row['input_tokens'] is None
+        assert row['output_tokens'] is None
+        assert row['retry_count'] == 0
+        assert row['duration_seconds'] is None
+        conn.close()
+
+
+def test_op_log_shows_metadata():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        run_cli('--db', db, 'op', 'progress', 'TST-T001',
+                '--summary', 'edited',
+                '--tool', 'Edit', '--skill', 'tdd', '--mcp', 'context7')
+        run_cli('--db', db, 'op', 'complete', 'TST-T001',
+                '--summary', 'done',
+                '--tokens-in', '500', '--tokens-out', '200',
+                '--retry-count', '1', '--duration', '30')
+
+        result = run_cli('--db', db, 'op', 'log', '--task', 'TST-T001')
+        assert result.returncode == 0
+        assert 'Edit' in result.stdout
+        assert 'tdd' in result.stdout
+        assert 'context7' in result.stdout
+        assert '500' in result.stdout
+        assert '200' in result.stdout

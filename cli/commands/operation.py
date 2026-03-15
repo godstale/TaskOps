@@ -20,12 +20,23 @@ def register(subparsers):
     progress.add_argument('--summary', required=True, help='Progress summary')
     progress.add_argument('--details', help='Details (JSON)')
     progress.add_argument('--subagent', action='store_true', help='Sub agent used')
+    progress.add_argument('--tool', default=None, help='Tool used (e.g., Edit, Write, Bash)')
+    progress.add_argument('--skill', default=None, help='Skill invoked')
+    progress.add_argument('--mcp', default=None, help='MCP server used')
     progress.set_defaults(func=handle_progress)
 
     complete = sub.add_parser('complete', help='Record task completion')
     complete.add_argument('task_id', help='Task ID')
     complete.add_argument('--summary', required=True, help='Completion summary')
     complete.add_argument('--details', help='Details (JSON)')
+    complete.add_argument('--tokens-in', type=int, default=None, dest='tokens_in',
+                          help='Input tokens consumed')
+    complete.add_argument('--tokens-out', type=int, default=None, dest='tokens_out',
+                          help='Output tokens consumed')
+    complete.add_argument('--retry-count', type=int, default=0, dest='retry_count',
+                          help='Number of retries (default 0)')
+    complete.add_argument('--duration', type=int, default=None, dest='duration',
+                          help='Duration in seconds')
     complete.set_defaults(func=handle_complete)
 
     error = sub.add_parser('error', help='Record error')
@@ -75,9 +86,11 @@ def handle_progress(args):
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
             "INSERT INTO operations (task_id, operation_type, summary, details, "
-            "subagent_used, created_at) VALUES (?, 'progress', ?, ?, ?, ?)",
+            "subagent_used, tool_name, skill_name, mcp_name, created_at) "
+            "VALUES (?, 'progress', ?, ?, ?, ?, ?, ?, ?)",
             (args.task_id, args.summary, args.details,
-             1 if args.subagent else 0, now)
+             1 if args.subagent else 0,
+             args.tool, args.skill, args.mcp, now)
         )
         conn.commit()
         print(f"Progress recorded: {args.task_id} - {args.summary}")
@@ -92,8 +105,12 @@ def handle_complete(args):
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
             "INSERT INTO operations (task_id, operation_type, summary, details, "
-            "completed_at, created_at) VALUES (?, 'complete', ?, ?, ?, ?)",
-            (args.task_id, args.summary, args.details, now, now)
+            "input_tokens, output_tokens, retry_count, duration_seconds, "
+            "completed_at, created_at) "
+            "VALUES (?, 'complete', ?, ?, ?, ?, ?, ?, ?, ?)",
+            (args.task_id, args.summary, args.details,
+             args.tokens_in, args.tokens_out, args.retry_count, args.duration,
+             now, now)
         )
         conn.commit()
         print(f"Operation completed: {args.task_id} - {args.summary}")
@@ -154,7 +171,25 @@ def handle_log(args):
             time = row['started_at'] or row['completed_at'] or row['created_at']
             summary = row['summary'] or '-'
             subagent = " [subagent]" if row['subagent_used'] else ""
+
+            extras = []
+            if row['tool_name']:
+                extras.append(f"tool:{row['tool_name']}")
+            if row['skill_name']:
+                extras.append(f"skill:{row['skill_name']}")
+            if row['mcp_name']:
+                extras.append(f"mcp:{row['mcp_name']}")
+            if row['retry_count']:
+                extras.append(f"retry:{row['retry_count']}")
+            if row['input_tokens'] is not None:
+                extras.append(f"in:{row['input_tokens']}")
+            if row['output_tokens'] is not None:
+                extras.append(f"out:{row['output_tokens']}")
+            if row['duration_seconds'] is not None:
+                extras.append(f"{row['duration_seconds']}s")
+            meta_str = f" [{', '.join(extras)}]" if extras else ""
+
             print(f"  [{row['id']}] {row['task_id']} {row['operation_type']} "
-                  f"({time}) {summary}{subagent}")
+                  f"({time}) {summary}{subagent}{meta_str}")
     finally:
         close_connection(conn)
