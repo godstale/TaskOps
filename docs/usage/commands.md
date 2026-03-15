@@ -228,12 +228,6 @@ python -m cli query generate-todo
 ```
 Regenerates `TODO.md` from current DB state.
 
-### `query generate-ops`
-```bash
-python -m cli query generate-ops
-```
-Generates `TASK_OPERATIONS.md` — full operation history report.
-
 ---
 
 ## `setting` — Settings Management

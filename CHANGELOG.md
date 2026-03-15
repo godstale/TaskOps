@@ -34,7 +34,7 @@ Initial release of TaskOps — AI Agent project management skill.
 
 **Hooks**
 - Claude Code hooks for auto-recording operations and generating reports
-- `TODO.md` and `TASK_OPERATIONS.md` auto-generation from DB state
+- `TODO.md` auto-generation from DB state
 
 **Tests**
 - Unit tests for DB layer
@@ -92,6 +92,20 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 - `skills/taskops.md` / `skills/taskops-gemini.md` — added TaskBoard launch guidance at the start of Phase 3 (Execution)
 - `AGENTS.md`, `CLAUDE.md` — rewritten in English only, version updated to v0.2.2
 - `README.md` — rewritten in English only, added link to `README.ko.md`
+
+---
+
+## [0.2.3] - 2026-03-16
+
+### Added
+
+- `plan update` command — apply project plan changes (create/update/delete epics and tasks) to the DB atomically via JSON input
+- Extended operation metadata: `tool_name`, `skill_name`, `mcp_name`, `retry_count`, `input_tokens`, `output_tokens`, `duration_seconds` fields on operations
+- DB schema migration system (v1 → v2)
+
+### Removed
+
+- `query generate-ops` subcommand and `TASK_OPERATIONS.md` auto-generation — use `op log` to query operation history from DB
 
 ## [Unreleased]
 

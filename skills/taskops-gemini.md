@@ -203,7 +203,6 @@ python -m cli workflow show
 
 ```bash
 python -m cli query generate-todo
-python -m cli query generate-ops
 ```
 
 ### Manage Resources
@@ -310,7 +309,7 @@ python -m cli query generate-todo
 | `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow management |
 | `op start/progress/complete/error/interrupt/log` | Operations recording |
 | `resource add/list` | Resource management |
-| `query status/tasks/generate-todo/generate-ops` | Status queries and reports |
+| `query status/tasks/generate-todo` | Status queries and reports |
 | `setting set/get/list/delete` | Settings management |
 | `project checkpoint [--note]` | Create a status snapshot |
 | `project checkpoint list` | List all checkpoints |
