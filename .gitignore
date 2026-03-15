@@ -1,11 +1,16 @@
+# ignore unintended folders
 __pycache__/
-*.pyc
-*.pyo
 .pytest_cache/
-*.db
 *.egg-info/
 dist/
 build/
 .vscode/
 docs/design/
 docs/plan/
+docs/img/
+
+# ignore unintended files
+*.pyc
+*.pyo
+*.db
+TODO.md
