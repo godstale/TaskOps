@@ -20,6 +20,9 @@ def register(subparsers):
     progress.add_argument('--summary', required=True, help='Progress summary')
     progress.add_argument('--details', help='Details (JSON)')
     progress.add_argument('--subagent', action='store_true', help='Sub agent used')
+    progress.add_argument('--tool', default=None, help='Tool used (e.g., Edit, Write, Bash)')
+    progress.add_argument('--skill', default=None, help='Skill invoked')
+    progress.add_argument('--mcp', default=None, help='MCP server used')
     progress.set_defaults(func=handle_progress)
 
     complete = sub.add_parser('complete', help='Record task completion')
@@ -75,9 +78,11 @@ def handle_progress(args):
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
             "INSERT INTO operations (task_id, operation_type, summary, details, "
-            "subagent_used, created_at) VALUES (?, 'progress', ?, ?, ?, ?)",
+            "subagent_used, tool_name, skill_name, mcp_name, created_at) "
+            "VALUES (?, 'progress', ?, ?, ?, ?, ?, ?, ?)",
             (args.task_id, args.summary, args.details,
-             1 if args.subagent else 0, now)
+             1 if args.subagent else 0,
+             args.tool, args.skill, args.mcp, now)
         )
         conn.commit()
         print(f"Progress recorded: {args.task_id} - {args.summary}")
