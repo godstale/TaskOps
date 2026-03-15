@@ -203,3 +203,50 @@ def test_op_progress_metadata_optional():
         assert row['skill_name'] is None
         assert row['mcp_name'] is None
         conn.close()
+
+
+def test_op_complete_with_metadata():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        run_cli('--db', db, 'op', 'start', 'TST-T001')
+        result = run_cli(
+            '--db', db, 'op', 'complete', 'TST-T001',
+            '--summary', 'all done',
+            '--tokens-in', '1200',
+            '--tokens-out', '450',
+            '--retry-count', '2',
+            '--duration', '90'
+        )
+        assert result.returncode == 0
+
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT * FROM operations WHERE task_id='TST-T001' AND operation_type='complete'"
+        ).fetchone()
+        assert row['input_tokens'] == 1200
+        assert row['output_tokens'] == 450
+        assert row['retry_count'] == 2
+        assert row['duration_seconds'] == 90
+        conn.close()
+
+
+def test_op_complete_metadata_optional():
+    """op complete without metadata args should still work."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        result = run_cli('--db', db, 'op', 'complete', 'TST-T001',
+                         '--summary', 'done')
+        assert result.returncode == 0
+
+        conn = sqlite3.connect(db)
+        conn.row_factory = sqlite3.Row
+        row = conn.execute(
+            "SELECT input_tokens, output_tokens, retry_count, duration_seconds "
+            "FROM operations WHERE task_id='TST-T001' AND operation_type='complete'"
+        ).fetchone()
+        assert row['input_tokens'] is None
+        assert row['output_tokens'] is None
+        assert row['retry_count'] == 0
+        assert row['duration_seconds'] is None
+        conn.close()

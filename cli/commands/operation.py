@@ -29,6 +29,14 @@ def register(subparsers):
     complete.add_argument('task_id', help='Task ID')
     complete.add_argument('--summary', required=True, help='Completion summary')
     complete.add_argument('--details', help='Details (JSON)')
+    complete.add_argument('--tokens-in', type=int, default=None, dest='tokens_in',
+                          help='Input tokens consumed')
+    complete.add_argument('--tokens-out', type=int, default=None, dest='tokens_out',
+                          help='Output tokens consumed')
+    complete.add_argument('--retry-count', type=int, default=0, dest='retry_count',
+                          help='Number of retries (default 0)')
+    complete.add_argument('--duration', type=int, default=None, dest='duration',
+                          help='Duration in seconds')
     complete.set_defaults(func=handle_complete)
 
     error = sub.add_parser('error', help='Record error')
@@ -97,8 +105,12 @@ def handle_complete(args):
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
             "INSERT INTO operations (task_id, operation_type, summary, details, "
-            "completed_at, created_at) VALUES (?, 'complete', ?, ?, ?, ?)",
-            (args.task_id, args.summary, args.details, now, now)
+            "input_tokens, output_tokens, retry_count, duration_seconds, "
+            "completed_at, created_at) "
+            "VALUES (?, 'complete', ?, ?, ?, ?, ?, ?, ?, ?)",
+            (args.task_id, args.summary, args.details,
+             args.tokens_in, args.tokens_out, args.retry_count, args.duration,
+             now, now)
         )
         conn.commit()
         print(f"Operation completed: {args.task_id} - {args.summary}")
