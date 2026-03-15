@@ -5,8 +5,9 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build": "vite build && tsc -p tsconfig.main.json",
-    "test": "vitest run",
-    "test:e2e": "playwright test"
+    "test": "vitest run --config vitest.config.ts",
+    "test:e2e": "playwright test",
+    "package": "electron-builder --config electron-builder.json5"
   },
   "dependencies": {
     "@taskboard/core": "workspace:*",

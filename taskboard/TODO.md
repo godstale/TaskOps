@@ -15,26 +15,26 @@
 ## 진행 현황
 
 - [x] Task 1: 모노레포 스캐폴딩
-- [ ] Task 2: Core — 타입 모델 정의
-- [ ] Task 3: Core — DB 연결
-- [ ] Task 4: Core — 쿼리 함수
-- [ ] Task 5: Core — DB 파일 감시 (Watcher)
-- [ ] Task 6: 테스트 픽스처 DB 생성
-- [ ] Task 7: TUI — 진입점 & 앱 쉘
-- [ ] Task 8: TUI — ProjectSelect 화면
-- [ ] Task 9: TUI — Dashboard 화면
-- [ ] Task 10: TUI — TaskOperations 화면
-- [ ] Task 11: TUI — Resources 화면
-- [ ] Task 12: TUI — Settings 화면
-- [ ] Task 13: Electron — Main 프로세스 (IPC + Watcher)
-- [ ] Task 14: Electron — 앱 쉘 & 사이드바
-- [ ] Task 15: Electron — ProjectSelect 화면
-- [ ] Task 16: Electron — Dashboard 화면 (Gantt)
-- [ ] Task 17: Electron — TaskOperations 화면 (ReactFlow)
-- [ ] Task 18: Electron — Resources 화면
-- [ ] Task 19: Electron — Settings 화면
-- [ ] Task 20: Electron — E2E 테스트 (Playwright)
-- [ ] Task 21: 패키징 & npx 실행 설정
+- [x] Task 2: Core — 타입 모델 정의
+- [x] Task 3: Core — DB 연결
+- [x] Task 4: Core — 쿼리 함수
+- [x] Task 5: Core — DB 파일 감시 (Watcher)
+- [x] Task 6: 테스트 픽스처 DB 생성
+- [x] Task 7: TUI — 진입점 & 앱 쉘
+- [x] Task 8: TUI — ProjectSelect 화면
+- [x] Task 9: TUI — Dashboard 화면
+- [x] Task 10: TUI — TaskOperations 화면
+- [x] Task 11: TUI — Resources 화면
+- [x] Task 12: TUI — Settings 화면
+- [x] Task 13: Electron — Main 프로세스 (IPC + Watcher)
+- [x] Task 14: Electron — 앱 쉘 & 사이드바
+- [x] Task 15: Electron — ProjectSelect 화면
+- [x] Task 16: Electron — Dashboard 화면 (Gantt)
+- [x] Task 17: Electron — TaskOperations 화면 (ReactFlow)
+- [x] Task 18: Electron — Resources 화면
+- [x] Task 19: Electron — Settings 화면
+- [x] Task 20: Electron — E2E 테스트 (Playwright)
+- [x] Task 21: 패키징 & npx 실행 설정
 
 ---
 
