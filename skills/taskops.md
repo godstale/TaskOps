@@ -34,6 +34,44 @@ Trigger conditions (any one is sufficient):
 
 ---
 
+## ⚠️ Scope & File Safety Rules
+
+**TaskOps manages task status data ONLY.**
+
+TaskOps is a task tracking tool. It reads and writes `taskops.db` and regenerates `TODO.md`.
+
+**NEVER do any of the following based on a TaskOps operation:**
+- Delete, move, or rename project source files or directories
+- Delete files outside of `taskops.db`, `TODO.md`, `AGENTS.md`, `SETTINGS.md`, `resources/`
+- Run `rm`, `rmdir`, `del`, `rd`, or any destructive file-system command on project files
+- Interpret "초기화 (reset/initialize)" as permission to clean up the project workspace
+
+**Violation scenario:** User says "작업을 모두 초기화하고 처음부터 다시 시작하고 싶다" (I want to reset everything and start over).
+- ❌ **WRONG:** Deleting project files, clearing the workspace, running `rm -rf` or equivalent
+- ✅ **CORRECT:** Present the two reset options below — task data only
+
+---
+
+## Handling Reset Requests
+
+When the user asks to "reset", "initialize", or "start over" (e.g. "작업을 모두 초기화하고 처음부터 다시 시작하고 싶다"), **always ask which type of reset they want** before taking any action:
+
+> 작업 초기화 방법을 선택해 주세요:
+>
+> **Option 1 — 상태만 초기화 (Keep plan, reset status)**
+> 기존 Epic/Task/SubTask 구조를 유지하고 모든 작업 상태를 `todo`로 되돌립니다. 계획을 바꾸지 않고 처음부터 다시 실행하고 싶을 때 선택하세요.
+> → `python -m cli project restart`
+>
+> **Option 2 — 계획부터 다시 시작 (Delete plan, re-plan)**
+> 기존 Epic/Task/SubTask를 모두 삭제하고 기획 단계부터 새로 시작합니다. 프로젝트 방향 자체를 바꾸고 싶을 때 선택하세요.
+> → `python -m cli task delete` + `python -m cli epic delete` (or `plan update` with deletions)
+>
+> ⚠️ **두 옵션 모두 프로젝트 소스 파일은 건드리지 않습니다.** TaskOps는 작업 상태 정보만 관리합니다.
+
+Do NOT proceed with either option until the user explicitly selects one.
+
+---
+
 ## Phase 1: Initialization
 
 Initialize a new TaskOps project in the target directory.

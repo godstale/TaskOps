@@ -107,6 +107,14 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 
 - `query generate-ops` subcommand and `TASK_OPERATIONS.md` auto-generation — use `op log` to query operation history from DB
 
+## [0.2.4] - 2026-03-16
+
+### Added
+
+- `skills/taskops.md` — **Scope & File Safety Rules** section: explicitly prohibits destructive file-system operations (rm, rmdir, del, etc.) based on TaskOps commands; TaskOps manages task data only
+- `skills/taskops.md` — **Handling Reset Requests** section: when user asks to "reset" or "initialize", agent must present two explicit options (reset status only vs. delete plan) and wait for selection before acting
+- `docs/superpowers/` — internal planning and spec documents for v0.2.3 feature development
+
 ## [Unreleased]
 
 - TBD
