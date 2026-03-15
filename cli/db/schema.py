@@ -66,6 +66,15 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 """
 
+SQL_CREATE_CHECKPOINTS = """
+CREATE TABLE IF NOT EXISTS checkpoints (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    note        TEXT,
+    snapshot    TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+"""
+
 SQL_CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_tasks_project   ON tasks(project_id);",
     "CREATE INDEX IF NOT EXISTS idx_tasks_parent    ON tasks(parent_id);",
@@ -84,6 +93,7 @@ def create_tables(conn):
     conn.execute(SQL_CREATE_OPERATIONS)
     conn.execute(SQL_CREATE_RESOURCES)
     conn.execute(SQL_CREATE_SETTINGS)
+    conn.execute(SQL_CREATE_CHECKPOINTS)
     for idx_sql in SQL_CREATE_INDEXES:
         conn.execute(idx_sql)
     conn.commit()
