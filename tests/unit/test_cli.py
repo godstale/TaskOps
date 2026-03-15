@@ -26,7 +26,7 @@ def test_cli_help():
 def test_cli_version():
     result = run_cli('--version')
     assert result.returncode == 0
-    assert '0.1.0' in result.stdout
+    assert '0.3.0' in result.stdout
 
 
 def test_cli_no_command_shows_help():
@@ -43,5 +43,5 @@ def test_cli_init_help():
 
 def test_cli_all_commands_registered():
     result = run_cli('--help')
-    for cmd in ['init', 'epic', 'task', 'objective', 'workflow', 'op', 'resource', 'query', 'setting']:
+    for cmd in ['init', 'epic', 'task', 'objective', 'workflow', 'op', 'resource', 'query', 'setting', 'project']:
         assert cmd in result.stdout, f"Command '{cmd}' not found in help output"
