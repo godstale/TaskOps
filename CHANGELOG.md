@@ -47,6 +47,28 @@ Initial release of TaskOps — AI Agent project management skill.
 
 ---
 
+## [0.2.0] - 2026-03-15
+
+TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
+
+### Added
+
+- TaskBoard installation guide in `skills/taskops.md` and `skills/taskops-gemini.md`
+  - Guides users to the standalone [TaskBoard](https://github.com/godstale/TaskBoard) repo for GUI visualization
+
+### Removed
+
+- `taskboard/` — entire TaskBoard GUI project (TUI + Electron) extracted to separate repo
+- `docs/design/2026-03-15-taskops-design.md` — superseded by `docs/design/TASKOPS_DESIGN.md`
+- `docs/plan/BUSINESS_LOGIC.md`, `docs/plan/IMPLEMENT_PLAN.md` — superseded by `docs/plan/TASKOPS_BUSINESS_LOGIC.md`, `docs/plan/TASKOPS_IMPLEMENT_PLAN.md`
+- `docs/plans/` — temporary implementation plan artifacts
+
+### Changed
+
+- Project status updated to Released in `CLAUDE.md` and `AGENTS.md`
+
+---
+
 ## [Unreleased]
 
 - TBD
