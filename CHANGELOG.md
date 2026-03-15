@@ -69,6 +69,16 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 
 ---
 
+## [0.2.1] - 2026-03-15
+
+### Added
+
+- `SKILL.md` at repository root to support installation via `npx skills add godstale/TaskOps`
+  - The `skills` npm package requires a file literally named `SKILL.md` with YAML frontmatter
+  - Content mirrors `skills/taskops.md` (Claude Code skill)
+
+---
+
 ## [Unreleased]
 
 - TBD
