@@ -2,7 +2,7 @@
 DB 연결 관리 모듈.
 """
 import sqlite3
-from .schema import create_tables
+from .schema import create_tables, migrate_schema
 
 
 def get_connection(db_path):
@@ -14,6 +14,7 @@ def get_connection(db_path):
     conn.execute("PRAGMA journal_mode=WAL;")
     conn.execute("PRAGMA foreign_keys=ON;")
     create_tables(conn)
+    migrate_schema(conn)
     return conn
 
 
