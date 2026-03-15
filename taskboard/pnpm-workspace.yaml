@@ -1,3 +1,2 @@
-# taskboard/pnpm-workspace.yaml
 packages:
   - 'packages/*'
