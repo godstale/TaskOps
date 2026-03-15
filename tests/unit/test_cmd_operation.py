@@ -250,3 +250,23 @@ def test_op_complete_metadata_optional():
         assert row['retry_count'] == 0
         assert row['duration_seconds'] is None
         conn.close()
+
+
+def test_op_log_shows_metadata():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project_with_task(tmpdir)
+        run_cli('--db', db, 'op', 'progress', 'TST-T001',
+                '--summary', 'edited',
+                '--tool', 'Edit', '--skill', 'tdd', '--mcp', 'context7')
+        run_cli('--db', db, 'op', 'complete', 'TST-T001',
+                '--summary', 'done',
+                '--tokens-in', '500', '--tokens-out', '200',
+                '--retry-count', '1', '--duration', '30')
+
+        result = run_cli('--db', db, 'op', 'log', '--task', 'TST-T001')
+        assert result.returncode == 0
+        assert 'Edit' in result.stdout
+        assert 'tdd' in result.stdout
+        assert 'context7' in result.stdout
+        assert '500' in result.stdout
+        assert '200' in result.stdout

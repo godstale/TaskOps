@@ -171,7 +171,25 @@ def handle_log(args):
             time = row['started_at'] or row['completed_at'] or row['created_at']
             summary = row['summary'] or '-'
             subagent = " [subagent]" if row['subagent_used'] else ""
+
+            extras = []
+            if row['tool_name']:
+                extras.append(f"tool:{row['tool_name']}")
+            if row['skill_name']:
+                extras.append(f"skill:{row['skill_name']}")
+            if row['mcp_name']:
+                extras.append(f"mcp:{row['mcp_name']}")
+            if row['retry_count']:
+                extras.append(f"retry:{row['retry_count']}")
+            if row['input_tokens'] is not None:
+                extras.append(f"in:{row['input_tokens']}")
+            if row['output_tokens'] is not None:
+                extras.append(f"out:{row['output_tokens']}")
+            if row['duration_seconds'] is not None:
+                extras.append(f"{row['duration_seconds']}s")
+            meta_str = f" [{', '.join(extras)}]" if extras else ""
+
             print(f"  [{row['id']}] {row['task_id']} {row['operation_type']} "
-                  f"({time}) {summary}{subagent}")
+                  f"({time}) {summary}{subagent}{meta_str}")
     finally:
         close_connection(conn)
