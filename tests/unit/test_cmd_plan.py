@@ -186,3 +186,20 @@ def test_plan_update_from_file():
         result = run_cli('--db', db, 'plan', 'update', '--changes-file', changes_file)
         assert result.returncode == 0
         assert 'TST-E002' in result.stdout
+
+
+def test_plan_delete_task_with_operations():
+    """Deleting a task with associated operations should not raise FK error."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_project(tmpdir)
+        # Add an operation to TST-T001
+        run_cli('--db', db, 'op', 'start', 'TST-T001', '--platform', 'test')
+
+        changes = json.dumps({"delete": [{"id": "TST-T001"}]})
+        result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
+        assert result.returncode == 0
+        assert 'TST-T001' in result.stdout
+
+        conn = sqlite3.connect(db)
+        assert conn.execute("SELECT COUNT(*) FROM tasks WHERE id='TST-T001'").fetchone()[0] == 0
+        conn.close()

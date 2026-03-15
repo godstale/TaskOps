@@ -174,10 +174,12 @@ def _validate_deletes(conn, deletes):
 
 
 def _cascade_delete(conn, task_id):
-    """Delete task and all descendants recursively. Operations are preserved."""
+    """Delete task and all descendants recursively, including their operations and resources."""
     children = conn.execute(
         "SELECT id FROM tasks WHERE parent_id=?", (task_id,)
     ).fetchall()
     for child in children:
         _cascade_delete(conn, child['id'])
+    conn.execute("DELETE FROM operations WHERE task_id=?", (task_id,))
+    conn.execute("DELETE FROM resources WHERE task_id=?", (task_id,))
     conn.execute("DELETE FROM tasks WHERE id=?", (task_id,))
