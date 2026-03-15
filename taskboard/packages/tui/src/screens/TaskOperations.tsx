@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Box, Text } from 'ink'
-import { useSafeInput } from '../useSafeInput'
+import type { Key } from 'ink'
+import { useSafeInput } from '../useSafeInput.js'
 import type { EpicWithTasks, Operation } from '@taskboard/core'
 
 const OP_ICON: Record<string, string> = {
@@ -35,7 +36,7 @@ export function TaskOperations({ epics, operations, selectedTaskId, setSelectedT
     ? allTasks.find(t => t.id === selectedTaskId)
     : allTasks[taskIdx]
 
-  useSafeInput((_, key) => {
+  useSafeInput((_: string, key: Key) => {
     if (key.leftArrow) setTaskIdx(i => Math.max(0, i - 1))
     if (key.rightArrow) setTaskIdx(i => Math.min(allTasks.length - 1, i + 1))
   })

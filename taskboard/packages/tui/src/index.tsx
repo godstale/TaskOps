@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import React from 'react'
 import { render } from 'ink'
-import { ProjectSelect } from './screens/ProjectSelect'
+import { ProjectSelect } from './screens/ProjectSelect.js'
 import path from 'path'
 
 const args = process.argv.slice(2)

@@ -1,11 +1,12 @@
 import React from 'react'
 import { Box, Text } from 'ink'
-import { useTaskBoard, Screen } from './useTaskBoard'
-import { useSafeInput } from './useSafeInput'
-import { Dashboard } from './screens/Dashboard'
-import { TaskOperations } from './screens/TaskOperations'
-import { Resources } from './screens/Resources'
-import { Settings } from './screens/Settings'
+import type { Key } from 'ink'
+import { useTaskBoard, Screen } from './useTaskBoard.js'
+import { useSafeInput } from './useSafeInput.js'
+import { Dashboard } from './screens/Dashboard.js'
+import { TaskOperations } from './screens/TaskOperations.js'
+import { Resources } from './screens/Resources.js'
+import { Settings } from './screens/Settings.js'
 
 const SCREENS: Screen[] = ['dashboard', 'taskops', 'resources', 'settings']
 const SCREEN_LABELS: Record<Screen, string> = {
@@ -22,7 +23,7 @@ interface Props {
 export function App({ dbPath }: Props) {
   const board = useTaskBoard(dbPath)
 
-  useSafeInput((input, key) => {
+  useSafeInput((input: string, key: Key) => {
     if (input === 'q' || input === 'Q') process.exit(0)
     if (input === 'r' || input === 'R') board.reload()
     if (key.tab) {

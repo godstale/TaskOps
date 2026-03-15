@@ -1,8 +1,9 @@
 import React, { useState } from 'react'
 import { Box, Text, render } from 'ink'
+import type { Key } from 'ink'
 import { getProjectList } from '@taskboard/core'
-import { useSafeInput } from '../useSafeInput'
-import { App } from '../App'
+import { useSafeInput } from '../useSafeInput.js'
+import { App } from '../App.js'
 import path from 'path'
 
 interface Props {
@@ -48,7 +49,7 @@ function PathInput({
   onChange: (v: string) => void
   onSubmit: () => void
 }) {
-  useSafeInput((input, key) => {
+  useSafeInput((input: string, key: Key) => {
     if (key.return) {
       onSubmit()
     } else if (key.backspace || key.delete) {
@@ -75,7 +76,7 @@ function ProjectList({ projects }: { projects: Array<{ name: string; dbPath: str
   const [selectedIdx, setSelectedIdx] = useState(0)
   const [launched, setLaunched] = useState(false)
 
-  useSafeInput((_, key) => {
+  useSafeInput((_: string, key: Key) => {
     if (key.upArrow) setSelectedIdx(i => Math.max(0, i - 1))
     if (key.downArrow) setSelectedIdx(i => Math.min(projects.length - 1, i + 1))
     if (key.return) {

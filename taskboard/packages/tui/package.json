@@ -1,6 +1,7 @@
 {
   "name": "@taskboard/tui",
   "version": "0.1.0",
+  "type": "module",
   "bin": {
     "taskboard-tui": "dist/index.js"
   },
