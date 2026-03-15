@@ -107,15 +107,25 @@ python -m cli query generate-todo
 
 ## Phase 3: Execution
 
-Before starting work, **guide the user to launch TaskBoard** for real-time monitoring:
+### Launch TaskBoard (Optional — Real-time Monitoring)
 
+Before starting work, check if TaskBoard is available and offer to launch it.
+
+**Step 1 — Detect installation** (check in order):
+1. `$TASKBOARD_PATH` environment variable
+2. `~/TaskBoard`
+3. `./TaskBoard` (relative to cwd)
+
+**Step 2 — If found**, launch TUI in a separate terminal (from the TaskBoard directory):
 ```bash
-# In a separate terminal — run from the TaskBoard directory
 pnpm --filter @taskboard/tui dev -- --path /path/to/project-root
 ```
 
+**Step 3 — If not found**, notify the user and continue without it:
+> TaskBoard is not installed. Work will proceed normally.
+> See [Visualizing with TaskBoard](#visualizing-with-taskboard) for install steps.
+
 > TaskBoard watches `taskops.db` and refreshes automatically as tasks progress.
-> If TaskBoard is not installed, see the [Visualizing with TaskBoard](#visualizing-with-taskboard) section.
 
 Work through tasks following the workflow order.
 
@@ -213,6 +223,69 @@ python -m cli setting list
 
 ---
 
+---
+
+## Phase 5: Rollback & Restart
+
+Use when a task needs to be retried, the project needs to return to a known-good state, or execution must restart from scratch.
+
+### Task Status Rollback
+
+Roll back a single task to a previous status using the existing `task update` command:
+
+```bash
+# Set a completed task back to todo (re-run it)
+python -m cli task update PRJ-T003 --status todo
+
+# Set a task to interrupted with a reason
+python -m cli task update PRJ-T003 --status interrupted --interrupt "Needs redesign"
+
+# Regenerate TODO.md after any status change
+python -m cli query generate-todo
+```
+
+### Checkpoint Rollback
+
+Capture the current state as a snapshot and roll back to any previous snapshot:
+
+```bash
+# Create a checkpoint at any meaningful point during execution
+python -m cli project checkpoint --note "After T003 complete"
+
+# List all checkpoints
+python -m cli project checkpoint list
+
+# Roll back all task statuses to a checkpoint
+# (auto-saves current state as a safety checkpoint first)
+python -m cli project rollback --checkpoint 2
+
+# Regenerate TODO.md after rollback
+python -m cli query generate-todo
+```
+
+> Checkpoint snapshots preserve `status` and `interrupt` fields for all tasks.
+> Operation history is NOT rolled back — the log is always preserved.
+> Tasks created after the checkpoint are reset to `todo` on rollback.
+
+### Project Restart
+
+Reset all tasks to `todo` and start over:
+
+```bash
+# Reset all tasks to todo (operation history preserved)
+python -m cli project restart
+
+# Reset all tasks to todo AND clear operation history
+python -m cli project restart --clear-ops
+
+# Regenerate TODO.md after restart
+python -m cli query generate-todo
+```
+
+> `project restart` automatically creates a checkpoint before resetting, so you can roll back if needed.
+
+---
+
 ## Gemini CLI Tool Mapping
 
 | Claude Code Tool | Gemini CLI Equivalent |
@@ -239,6 +312,10 @@ python -m cli setting list
 | `resource add/list` | Resource management |
 | `query status/tasks/generate-todo/generate-ops` | Status queries and reports |
 | `setting set/get/list/delete` | Settings management |
+| `project checkpoint [--note]` | Create a status snapshot |
+| `project checkpoint list` | List all checkpoints |
+| `project rollback --checkpoint <id>` | Restore task statuses from checkpoint |
+| `project restart [--clear-ops]` | Reset all tasks to todo |
 
 All commands use: `python -m cli [--db path] <command> <subcommand> [options]`
 
@@ -246,9 +323,10 @@ All commands use: `python -m cli [--db path] <command> <subcommand> [options]`
 
 ## Visualizing with TaskBoard
 
-TaskBoard is a standalone read-only GUI that visualizes the TaskOps database. Guide the user to install it when they want to monitor project progress visually.
+TaskBoard is a standalone read-only GUI that visualizes the TaskOps database in real-time.
+Two interface modes are available: TUI (terminal, stable) and Electron (desktop, experimental).
 
-**Install**
+### Install
 
 ```bash
 git clone https://github.com/godstale/TaskBoard.git
@@ -256,15 +334,44 @@ cd TaskBoard
 pnpm install
 ```
 
-**Run**
+> **Windows PowerShell users:** run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser`
+> or use Git Bash / Command Prompt instead.
 
+### TUI Mode (Stable)
+
+**Quick start — dev mode (no build required):**
 ```bash
-# TUI (terminal)
-pnpm --filter @taskboard/tui dev -- --path /path/to/taskops-root
+# Run from the TaskBoard directory
+pnpm --filter @taskboard/tui dev -- --path /path/to/project-root
+```
 
-# Electron (desktop app)
+**Production — build first, then run:**
+```bash
+pnpm --filter @taskboard/tui build
+node packages/tui/dist/index.js --path /path/to/project-root
+```
+
+**Key controls:** `Tab` switch screen · `R` reload · `Q` quit · `↑↓` navigate · `Enter` select
+
+### Electron Mode (Experimental)
+
+**Dev mode:**
+```bash
+# First-time setup — rebuild native modules for your Node version
+pnpm rebuild:electron
+
+# Launch
 pnpm --filter @taskboard/electron dev
 ```
 
-TaskBoard watches the `taskops.db` file and automatically refreshes when the DB changes.
+**Production build:**
+```bash
+pnpm --filter @taskboard/electron build
+pnpm --filter @taskboard/electron package
+# Installers output to: packages/electron/release/
+```
+
+> `--path` points to the project root directory (the folder containing `taskops.db`).
+> TaskBoard watches `taskops.db` and automatically refreshes when the DB changes.
+
 → [TaskBoard GitHub](https://github.com/godstale/TaskBoard)
