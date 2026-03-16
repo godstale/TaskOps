@@ -1,0 +1,144 @@
+# ${project_name} — TaskOps Reference
+
+> Prefix: ${prefix} | DB: taskops.db | Created: ${timestamp}
+
+⚠️ **TaskOps manages only `taskops.db` and this file. It does NOT modify any other project files.**
+
+---
+
+## When to Update TaskOps
+
+| Event | Commands |
+|-------|----------|
+| New TODO list to track | `workflow create` → `workflow import` |
+| Start working on a task | `task update <ID> --status in_progress` + `op start <ID>` |
+| Complete a task | `task update <ID> --status done` + `op complete <ID>` |
+| Plan changes (full replace) | `workflow import <W-ID> --structure '<json>'` |
+| Minor plan tweak | `plan update --changes '<json>'` |
+| Check current state | `query show` or `query status` |
+
+---
+
+## TODO → ETS Conversion Guide
+
+Your existing TODO list maps to TaskOps structure as follows:
+
+| TODO element | TaskOps element |
+|-------------|----------------|
+| Section header (`## Phase 1`) | Epic |
+| Checkbox item (`- [ ] Do X`) | Task |
+| Nested checkbox | SubTask (Task with Task parent) |
+
+One TODO list = one Workflow (`${prefix}-W001`, `${prefix}-W002`, ...).
+
+**To import a TODO list:**
+
+1. Convert your TODO list to this JSON format:
+```json
+{
+  "epics": [
+    {
+      "title": "Phase 1: Setup",
+      "tasks": [
+        {
+          "title": "Task title",
+          "description": "optional detail",
+          "subtasks": [{"title": "SubTask title"}]
+        }
+      ]
+    }
+  ]
+}
+```
+
+2. Create a workflow and import:
+```bash
+python -m cli --db taskops.db workflow create --title "My Plan"
+python -m cli --db taskops.db workflow import ${prefix}-W001 --structure '<json>'
+```
+
+3. Verify the result:
+```bash
+python -m cli --db taskops.db query show
+```
+
+---
+
+## Command Reference
+
+All commands: `python -m cli [--db <path>] <command> <subcommand> [options]`
+
+### Workflow
+```bash
+workflow create --title "..." [--source-file <path>]
+workflow list
+workflow import <W-ID> --structure '<json>'
+workflow import <W-ID> --structure-file <path.json>
+workflow delete <W-ID>
+workflow set-order <T-ID> <T-ID> ...
+workflow set-parallel --group <name> <T-ID> ...
+workflow add-dep <T-ID> --depends-on <T-ID> ...
+workflow show
+workflow next
+workflow current
+```
+
+### Epic / Task
+```bash
+epic create --title "..." [--description "..."]
+epic list | show <E-ID> | update <E-ID> --status <status> | delete <E-ID>
+
+task create --parent <E-ID or T-ID> --title "..."
+task list [--epic <E-ID>] [--status <status>]
+task show <T-ID>
+task update <T-ID> --status <todo|in_progress|interrupted|done|cancelled>
+task update <T-ID> --status interrupted --interrupt "reason"
+task delete <T-ID>
+```
+
+### Plan (partial updates to existing workflow)
+```bash
+plan update --changes '<json>' [--workflow <W-ID>]
+# JSON: {"create": [...], "update": [...], "delete": [...]}
+```
+
+### Operations
+```bash
+op start <T-ID> --platform <claude_code|gemini_cli>
+op progress <T-ID> --summary "..."
+op complete <T-ID> --summary "..."
+op error <T-ID> --summary "..."
+op interrupt <T-ID> --summary "..."
+op log [--task <T-ID>]
+```
+
+### Query / Status
+```bash
+query show [--workflow <W-ID>]
+query status
+query tasks [--status <status>]
+```
+
+### Objective
+```bash
+objective create --title "..." --milestone "..."
+objective create --title "..." --due-date YYYY-MM-DD
+objective list
+objective update <O-ID> --status done
+```
+
+### Settings
+```bash
+setting set <key> <value> [--desc "..."]
+setting get <key>
+setting list
+setting delete <key>
+```
+
+### Project (rollback / restart)
+```bash
+project checkpoint [--note "..."]
+project checkpoint list
+project rollback --checkpoint <id>
+project restart [--clear-ops]
+```

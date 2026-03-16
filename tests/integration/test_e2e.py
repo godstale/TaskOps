@@ -33,7 +33,7 @@ def test_full_project_lifecycle():
         assert r.returncode == 0, f"init failed: {r.stderr}"
         db = os.path.join(proj, 'taskops.db')
         assert os.path.exists(db)
-        assert os.path.exists(os.path.join(proj, 'TODO.md'))
+        assert os.path.exists(os.path.join(proj, 'TASKOPS.md'))
 
         # --- Phase 2: Planning ---
         # Create Epic

@@ -32,9 +32,10 @@ def test_init_creates_required_files():
         proj_path = os.path.join(tmpdir, 'myproj')
         run_cli('init', '--name', 'MyProj', '--prefix', 'MYP', '--path', proj_path)
 
-        for filename in ['TODO.md', 'AGENTS.md', 'SETTINGS.md']:
-            assert os.path.exists(os.path.join(proj_path, filename)), f"{filename} not created"
-        assert os.path.isdir(os.path.join(proj_path, 'resources'))
+        assert os.path.exists(os.path.join(proj_path, 'TASKOPS.md')), "TASKOPS.md not created"
+        assert not os.path.exists(os.path.join(proj_path, 'AGENTS.md')), "AGENTS.md should not be created"
+        assert not os.path.exists(os.path.join(proj_path, 'SETTINGS.md')), "SETTINGS.md should not be created"
+        assert not os.path.isdir(os.path.join(proj_path, 'resources')), "resources/ should not be created"
 
 
 def test_init_db_has_correct_tables():
@@ -82,13 +83,13 @@ def test_init_project_record_in_db():
             conn.close()
 
 
-def test_init_todo_md_contains_project_name():
+def test_init_taskops_md_contains_project_name():
     with tempfile.TemporaryDirectory() as tmpdir:
         proj_path = os.path.join(tmpdir, 'myproj')
         run_cli('init', '--name', 'TestProject', '--prefix', 'TST', '--path', proj_path)
 
-        todo_path = os.path.join(proj_path, 'TODO.md')
-        with open(todo_path, encoding='utf-8') as f:
+        taskops_path = os.path.join(proj_path, 'TASKOPS.md')
+        with open(taskops_path, encoding='utf-8') as f:
             content = f.read()
         assert 'TestProject' in content
 
