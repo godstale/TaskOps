@@ -15,6 +15,7 @@ def register(subparsers):
     group = update.add_mutually_exclusive_group(required=True)
     group.add_argument('--changes', help='JSON string of changes')
     group.add_argument('--changes-file', help='Path to JSON file of changes')
+    update.add_argument('--workflow', help='Scope new task creates to this workflow ID')
     update.set_defaults(func=handle_update)
 
     parser.set_defaults(func=lambda args: parser.print_help())
@@ -64,11 +65,13 @@ def handle_update(args):
                 new_id = next_id(conn, project_id, type_char)
                 conn.execute(
                     "INSERT INTO tasks "
-                    "(id, project_id, type, title, description, status, parent_id, created_at, updated_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "(id, project_id, type, title, description, status, parent_id, workflow_id, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                     (new_id, project_id, item['type'], item['title'],
                      item.get('description', ''), item.get('status', 'todo'),
-                     item.get('parent_id'), now, now)
+                     item.get('parent_id'),
+                     item.get('workflow_id') or getattr(args, 'workflow', None),
+                     now, now)
                 )
                 created_ids.append(new_id)
 
@@ -105,13 +108,6 @@ def handle_update(args):
         if not (created_ids or updated_ids or deleted_ids):
             print("No changes applied.")
             return
-
-        # --- Regenerate TODO.md (soft fail) ---
-        try:
-            from .query import handle_generate_todo
-            handle_generate_todo(args)
-        except Exception as e:
-            print(f"Warning: TODO.md regeneration failed: {e}")
 
     finally:
         close_connection(conn)

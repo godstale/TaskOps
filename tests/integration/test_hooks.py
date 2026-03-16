@@ -86,16 +86,15 @@ def test_on_task_complete_updates_status():
             conn.close()
 
 
-def test_on_task_complete_regenerates_todo():
+def test_on_task_complete_no_todo_md_written():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_hook('on_task_complete.sh', 'TST-T001', cwd=pp)
-
+        # Remove any TODO.md created by init, then verify hook does not recreate it
         todo_path = os.path.join(pp, 'TODO.md')
-        assert os.path.exists(todo_path), f"TODO.md not generated. Hook stderr: {result.stderr}"
-        with open(todo_path, encoding='utf-8') as f:
-            content = f.read()
-        assert '`done`' in content
+        if os.path.exists(todo_path):
+            os.remove(todo_path)
+        run_hook('on_task_complete.sh', 'TST-T001', cwd=pp)
+        assert not os.path.exists(todo_path)
 
 
 def test_on_tool_use_records_progress():

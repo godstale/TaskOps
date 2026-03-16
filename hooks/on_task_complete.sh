@@ -21,4 +21,3 @@ fi
 
 python -m cli --db "$DB_PATH" task update "$TASK_ID" --status done 2>/dev/null
 python -m cli --db "$DB_PATH" op complete "$TASK_ID" --summary "Task completed" 2>/dev/null
-python -m cli --db "$DB_PATH" query generate-todo 2>/dev/null

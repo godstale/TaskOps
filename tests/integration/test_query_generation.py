@@ -1,5 +1,5 @@
 """Integration tests for query generation.
-query 생성 통합 테스트: generate-todo 결과 포맷 검증.
+query 생성 통합 테스트: show 결과 포맷 검증.
 """
 import os
 import subprocess
@@ -29,34 +29,31 @@ def setup_project(tmpdir):
     return proj_path, db
 
 
-def test_generate_todo_creates_file():
+def test_show_no_file_created():
     with tempfile.TemporaryDirectory() as tmpdir:
         proj_path, db = setup_project(tmpdir)
-        os.remove(os.path.join(proj_path, 'TODO.md'))  # remove init-created file
-        result = run_cli('--db', db, 'query', 'generate-todo')
+        # Remove any TODO.md created by init, then verify query show does not recreate it
+        todo_path = os.path.join(proj_path, 'TODO.md')
+        if os.path.exists(todo_path):
+            os.remove(todo_path)
+        result = run_cli('--db', db, 'query', 'show')
         assert result.returncode == 0
-        assert os.path.exists(os.path.join(proj_path, 'TODO.md'))
+        assert not os.path.exists(todo_path)
 
 
-def test_generate_todo_contains_task_titles():
+def test_show_contains_task_titles():
     with tempfile.TemporaryDirectory() as tmpdir:
         proj_path, db = setup_project(tmpdir)
-        run_cli('--db', db, 'query', 'generate-todo')
-
-        with open(os.path.join(proj_path, 'TODO.md'), encoding='utf-8') as f:
-            content = f.read()
+        result = run_cli('--db', db, 'query', 'show')
+        content = result.stdout
         assert 'Task One' in content
         assert 'Task Two' in content
 
 
-def test_generate_todo_reflects_status():
+def test_show_reflects_status():
     with tempfile.TemporaryDirectory() as tmpdir:
         proj_path, db = setup_project(tmpdir)
         run_cli('--db', db, 'task', 'update', 'QRY-T001', '--status', 'done')
-        run_cli('--db', db, 'query', 'generate-todo')
-
-        with open(os.path.join(proj_path, 'TODO.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert '`done`' in content
-
-
+        result = run_cli('--db', db, 'query', 'show')
+        content = result.stdout
+        assert 'done' in content

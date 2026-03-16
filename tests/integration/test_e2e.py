@@ -64,8 +64,8 @@ def test_full_project_lifecycle():
         r = cli('--db', db, 'workflow', 'add-dep', 'E2E-T003', '--depends-on', 'E2E-T002')
         assert r.returncode == 0
 
-        # Generate initial TODO
-        r = cli('--db', db, 'query', 'generate-todo')
+        # Show initial task structure
+        r = cli('--db', db, 'query', 'show')
         assert r.returncode == 0
 
         # --- Phase 4: Execute Task 1 ---
@@ -115,11 +115,9 @@ def test_full_project_lifecycle():
         assert r.returncode == 0
         assert 'E2E' in r.stdout or 'done' in r.stdout
 
-        r = cli('--db', db, 'query', 'generate-todo')
+        r = cli('--db', db, 'query', 'show')
         assert r.returncode == 0
-        with open(os.path.join(proj, 'TODO.md'), encoding='utf-8') as f:
-            todo = f.read()
-        assert '`done`' in todo
+        assert 'done' in r.stdout
 
         # --- Phase 9: DB state verification ---
         conn = sqlite3.connect(db)

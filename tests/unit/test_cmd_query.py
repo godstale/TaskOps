@@ -81,45 +81,53 @@ def test_query_tasks_filter_status():
         assert 'Signup API' in result.stdout
 
 
-def test_query_generate_todo():
+def test_query_show_stdout():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_full_project(tmpdir)
-        result = run_cli('--db', db, 'query', 'generate-todo')
+        result = run_cli('--db', db, 'query', 'show')
         assert result.returncode == 0
-        assert 'regenerated' in result.stdout.lower()
-
-        with open(os.path.join(pp, 'TODO.md'), encoding='utf-8') as f:
-            content = f.read()
-
-        assert 'Test Project (TST)' in content
-        assert 'Workflow' in content
-        assert 'TST-T001' in content
-        assert 'Auth System' in content
-        assert 'Login API' in content
-        assert '`done`' in content
-        assert '`todo`' in content
-        assert 'MVP Complete' in content
+        assert 'TST-T001' in result.stdout
+        assert 'Auth System' in result.stdout
+        assert 'Login API' in result.stdout
 
 
-def test_query_generate_todo_with_parallel_group():
+def test_query_show_no_file_written():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_full_project(tmpdir)
+        # Remove any TODO.md created by init, then verify query show does not recreate it
+        todo_path = os.path.join(pp, 'TODO.md')
+        if os.path.exists(todo_path):
+            os.remove(todo_path)
+        run_cli('--db', db, 'query', 'show')
+        assert not os.path.exists(todo_path)
+
+
+def test_query_show_workflow_filter():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_full_project(tmpdir)
+        run_cli('--db', db, 'workflow', 'create', '--title', 'W1')
+        result = run_cli('--db', db, 'query', 'show', '--workflow', 'TST-W001')
+        assert result.returncode == 0
+
+
+def test_query_show_parallel_group():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_full_project(tmpdir)
         run_cli('--db', db, 'workflow', 'set-parallel',
                 '--group', 'auth-grp', 'TST-T002', 'TST-T003')
-        run_cli('--db', db, 'query', 'generate-todo')
-
-        with open(os.path.join(pp, 'TODO.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert 'parallel-group: auth-grp' in content
+        result = run_cli('--db', db, 'query', 'show')
+        assert 'auth-grp' in result.stdout
 
 
-def test_query_generate_todo_subtasks():
+def test_query_show_subtasks():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_full_project(tmpdir)
-        run_cli('--db', db, 'query', 'generate-todo')
-
-        with open(os.path.join(pp, 'TODO.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert 'JWT Token' in content
+        result = run_cli('--db', db, 'query', 'show')
+        assert 'JWT Token' in result.stdout
 
 
+def test_query_show_objectives():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp, db = setup_full_project(tmpdir)
+        result = run_cli('--db', db, 'query', 'show')
+        assert 'MVP Complete' in result.stdout
