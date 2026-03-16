@@ -2,7 +2,7 @@
 TaskOps DB 스키마 정의 모듈.
 """
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SQL_CREATE_TASKS = """
 CREATE TABLE IF NOT EXISTS tasks (
@@ -21,8 +21,22 @@ CREATE TABLE IF NOT EXISTS tasks (
     seq_order   INTEGER,
     parallel_group TEXT,
     depends_on  TEXT,
+    workflow_id TEXT,                      -- references workflows(id), nullable (v3+)
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+"""
+
+SQL_CREATE_WORKFLOWS = """
+CREATE TABLE IF NOT EXISTS workflows (
+    id          TEXT PRIMARY KEY,
+    project_id  TEXT NOT NULL,
+    title       TEXT NOT NULL,
+    source_file TEXT,
+    status      TEXT NOT NULL DEFAULT 'active'
+                CHECK(status IN ('active','completed','archived')),
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (project_id) REFERENCES tasks(id)
 );
 """
 
@@ -89,6 +103,7 @@ SQL_CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_tasks_status    ON tasks(status);",
     "CREATE INDEX IF NOT EXISTS idx_operations_task ON operations(task_id);",
     "CREATE INDEX IF NOT EXISTS idx_resources_task  ON resources(task_id);",
+    "CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);",
 ]
 
 SQL_MIGRATE_V1_TO_V2 = [
@@ -99,6 +114,18 @@ SQL_MIGRATE_V1_TO_V2 = [
     "ALTER TABLE operations ADD COLUMN input_tokens INTEGER;",
     "ALTER TABLE operations ADD COLUMN output_tokens INTEGER;",
     "ALTER TABLE operations ADD COLUMN duration_seconds INTEGER;",
+]
+
+SQL_MIGRATE_V2_TO_V3 = [
+    (
+        "CREATE TABLE IF NOT EXISTS workflows "
+        "(id TEXT PRIMARY KEY, project_id TEXT NOT NULL, title TEXT NOT NULL, "
+        "source_file TEXT, status TEXT NOT NULL DEFAULT 'active' "
+        "CHECK(status IN ('active','completed','archived')), "
+        "created_at TEXT NOT NULL DEFAULT (datetime('now')));"
+    ),
+    "ALTER TABLE tasks ADD COLUMN workflow_id TEXT;",
+    "CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);",
 ]
 
 
@@ -127,12 +154,37 @@ def migrate_schema(conn):
         )
         conn.commit()
 
+    if current_version < 3:
+        existing_tables = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'"
+        ).fetchall()}
+        existing_cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(tasks)"
+        ).fetchall()}
+        for stmt in SQL_MIGRATE_V2_TO_V3:
+            if 'ALTER TABLE tasks ADD COLUMN workflow_id' in stmt and 'workflow_id' in existing_cols:
+                continue
+            if 'CREATE TABLE IF NOT EXISTS workflows' in stmt and 'workflows' in existing_tables:
+                continue
+            try:
+                conn.execute(stmt)
+            except Exception:
+                pass
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (key, value, description, updated_at) "
+            "VALUES ('__schema_version', '3', 'DB schema version', ?)",
+            (now,)
+        )
+        conn.commit()
+
 
 def create_tables(conn):
     """Create all tables and indexes. Idempotent.
     모든 테이블과 인덱스를 생성. 멱등성 보장.
     """
     conn.execute(SQL_CREATE_TASKS)
+    conn.execute(SQL_CREATE_WORKFLOWS)
     conn.execute(SQL_CREATE_OPERATIONS)
     conn.execute(SQL_CREATE_RESOURCES)
     conn.execute(SQL_CREATE_SETTINGS)

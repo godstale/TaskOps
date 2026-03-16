@@ -66,6 +66,21 @@ def next_id(conn, prefix, type_char):
     return f"{prefix}-{type_char}{next_num:03d}"
 
 
+def next_workflow_id(conn, prefix):
+    """Generate next sequential workflow ID.
+    다음 순차 Workflow ID 생성. e.g. PRJ-W001, PRJ-W002
+    """
+    pattern = f"{prefix}-W%"
+    row = conn.execute(
+        "SELECT id FROM workflows WHERE id LIKE ? ORDER BY id DESC LIMIT 1",
+        (pattern,)
+    ).fetchone()
+    if row is None:
+        return f"{prefix}-W001"
+    num_str = row['id'].split('-W')[1]
+    return f"{prefix}-W{int(num_str) + 1:03d}"
+
+
 def get_project_dir(args):
     """Get the project directory (where taskops.db lives).
     프로젝트 디렉토리 (taskops.db가 있는 곳) 반환.
