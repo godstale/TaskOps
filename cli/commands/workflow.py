@@ -33,6 +33,18 @@ def register(subparsers):
     current = sub.add_parser('current', help='Show currently active task')
     current.set_defaults(func=handle_current)
 
+    create = sub.add_parser('create', help='Create a new workflow')
+    create.add_argument('--title', required=True, help='Workflow title')
+    create.add_argument('--source-file', dest='source_file', help='Original TODO file path (optional)')
+    create.set_defaults(func=handle_create)
+
+    wf_list = sub.add_parser('list', help='List all workflows')
+    wf_list.set_defaults(func=handle_list)
+
+    delete = sub.add_parser('delete', help='Delete a workflow and all its tasks')
+    delete.add_argument('workflow_id', help='Workflow ID to delete (e.g. PRJ-W001)')
+    delete.set_defaults(func=handle_delete)
+
     parser.set_defaults(func=lambda args: parser.print_help())
 
 
@@ -189,5 +201,64 @@ def handle_current(args):
             # No output for scripting use (hooks)
             return
         print(row['id'])
+    finally:
+        close_connection(conn)
+
+
+def handle_create(args):
+    from .utils import get_project_id, next_workflow_id
+    from datetime import datetime
+    conn = get_db(args)
+    try:
+        project_id = get_project_id(conn)
+        wf_id = next_workflow_id(conn, project_id)
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        conn.execute(
+            "INSERT INTO workflows (id, project_id, title, source_file, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (wf_id, project_id, args.title, getattr(args, 'source_file', None), now)
+        )
+        conn.commit()
+        print(f"Created workflow {wf_id}: {args.title}")
+    finally:
+        close_connection(conn)
+
+
+def handle_list(args):
+    conn = get_db(args)
+    try:
+        rows = conn.execute(
+            "SELECT id, title, status, source_file FROM workflows ORDER BY id"
+        ).fetchall()
+        if not rows:
+            print("No workflows found.")
+            return
+        for row in rows:
+            src = f" (from: {row['source_file']})" if row['source_file'] else ""
+            print(f"  {row['id']}: {row['title']} [{row['status']}]{src}")
+    finally:
+        close_connection(conn)
+
+
+def handle_delete(args):
+    conn = get_db(args)
+    try:
+        wf = conn.execute(
+            "SELECT id FROM workflows WHERE id=?", (args.workflow_id,)
+        ).fetchone()
+        if not wf:
+            print(f"Workflow not found: {args.workflow_id}")
+            raise SystemExit(1)
+        # Cascade: delete operations and resources for tasks in this workflow, then tasks, then workflow
+        tasks = conn.execute(
+            "SELECT id FROM tasks WHERE workflow_id=?", (args.workflow_id,)
+        ).fetchall()
+        for task in tasks:
+            conn.execute("DELETE FROM operations WHERE task_id=?", (task['id'],))
+            conn.execute("DELETE FROM resources WHERE task_id=?", (task['id'],))
+        conn.execute("DELETE FROM tasks WHERE workflow_id=?", (args.workflow_id,))
+        conn.execute("DELETE FROM workflows WHERE id=?", (args.workflow_id,))
+        conn.commit()
+        print(f"Deleted workflow {args.workflow_id} and its tasks.")
     finally:
         close_connection(conn)
