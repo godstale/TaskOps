@@ -132,8 +132,9 @@ TaskOps/
 | `task create/list/show/update/delete` | Task/SubTask CRUD |
 | `objective create/list/update/delete` | Objective CRUD |
 | `workflow set-order/set-parallel/add-dep/show/next/current` | 워크플로우 관리 |
+| `workflow restart <W-ID> [--clear-ops]` | 워크플로우 Task를 todo로 초기화하여 재실행 |
 | `op start/progress/complete/error/interrupt/log` | 작업 이력 기록 |
-| `resource add/list` | 리소스 관리 |
+| `resource add/list [--task/--workflow/--type]` | 리소스 관리 |
 | `query status/tasks/generate-todo/generate-ops` | 상태 조회 및 리포트 |
 | `setting set/get/list/delete` | 설정 관리 |
 

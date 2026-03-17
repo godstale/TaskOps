@@ -53,6 +53,12 @@ def register(subparsers):
                            help='Path to JSON structure file')
     imp.set_defaults(func=handle_import)
 
+    restart = sub.add_parser('restart', help='Reset workflow tasks to todo for re-execution')
+    restart.add_argument('workflow_id', help='Workflow ID to restart (e.g. PRJ-W001)')
+    restart.add_argument('--clear-ops', action='store_true',
+                         help='Also clear operation records for this workflow')
+    restart.set_defaults(func=handle_restart)
+
     parser.set_defaults(func=lambda args: parser.print_help())
 
 
@@ -363,5 +369,56 @@ def handle_import(args):
 
         conn.commit()
         print('\n'.join(output_lines))
+    finally:
+        close_connection(conn)
+
+
+def handle_restart(args):
+    from datetime import datetime
+    from .utils import get_project_id
+
+    conn = get_db(args)
+    try:
+        # Validate workflow exists
+        wf = conn.execute(
+            "SELECT id, title FROM workflows WHERE id=?", (args.workflow_id,)
+        ).fetchone()
+        if not wf:
+            print(f"Workflow not found: {args.workflow_id}")
+            raise SystemExit(1)
+
+        # Auto-save checkpoint before restart
+        project_id = get_project_id(conn)
+        rows = conn.execute(
+            "SELECT id, status, interrupt FROM tasks "
+            "WHERE project_id=? AND type != 'project'",
+            (project_id,)
+        ).fetchall()
+        snapshot = {r['id']: {'status': r['status'], 'interrupt': r['interrupt']} for r in rows}
+        conn.execute(
+            "INSERT INTO checkpoints (note, snapshot) VALUES (?, ?)",
+            (f"[auto] before workflow restart {args.workflow_id}", json.dumps(snapshot))
+        )
+
+        # Reset only tasks belonging to this workflow
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        result = conn.execute(
+            "UPDATE tasks SET status='todo', interrupt=NULL, updated_at=? "
+            "WHERE workflow_id=? AND type != 'project'",
+            (now, args.workflow_id)
+        )
+        reset_count = result.rowcount
+
+        if args.clear_ops:
+            task_ids = conn.execute(
+                "SELECT id FROM tasks WHERE workflow_id=?", (args.workflow_id,)
+            ).fetchall()
+            for t in task_ids:
+                conn.execute("DELETE FROM operations WHERE task_id=?", (t['id'],))
+            print(f"  Operation history cleared for {args.workflow_id}.")
+
+        conn.commit()
+        print(f"Workflow {args.workflow_id} restarted: {reset_count} tasks reset to 'todo'")
+        print("  Auto-checkpoint saved before restart.")
     finally:
         close_connection(conn)
