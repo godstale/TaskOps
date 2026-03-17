@@ -13,6 +13,7 @@ docs/img/
 docs/superpowers/*
 docs/superpowers/plans/*
 docs/superpowers/specs/*
+temp/*
 
 # ignore unintended files
 *.pyc
