@@ -326,11 +326,23 @@ With hooks configured, `on_tool_use.sh` records progress automatically on each t
 ### Complete a Task
 
 ```bash
+# Register output files produced by this task (required if task produced files)
+python -m cli --db /absolute/path/to/project/taskops.db resource add PRJ-T001 --path ./output/report.html --type output --desc "Final HTML report"
+
 # Mark task as done
-python -m cli task update PRJ-T001 --status done
-python -m cli op complete PRJ-T001 --summary "Login API complete, all tests pass"
-python -m cli query show
+python -m cli --db /absolute/path/to/project/taskops.db task update PRJ-T001 --status done
+python -m cli --db /absolute/path/to/project/taskops.db op complete PRJ-T001 --summary "Login API complete, all tests pass"
+python -m cli --db /absolute/path/to/project/taskops.db query show
 ```
+
+**Resource registration rule:** Any file created, modified, or referenced by a task must be registered with `resource add` before marking the task done. This populates TaskBoard's Resource tab.
+
+| File role | `--type` value |
+|-----------|----------------|
+| Input spec / reference doc | `input` |
+| Final deliverable | `output` |
+| Intermediate/temp file | `intermediate` |
+| External link / docs URL | `reference` |
 
 If hooks are configured, use `bash hooks/on_task_complete.sh PRJ-T001` instead.
 
