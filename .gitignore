@@ -10,7 +10,9 @@ release/
 docs/design/
 docs/plan/
 docs/img/
-docs/superpowers/
+docs/superpowers/*
+docs/superpowers/plans/*
+docs/superpowers/specs/*
 
 # ignore unintended files
 *.pyc

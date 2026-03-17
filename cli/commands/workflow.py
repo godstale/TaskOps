@@ -353,6 +353,15 @@ def handle_import(args):
                 output_lines.append(f"    {task_id}: {task_data['title']}")
                 seq += 1
 
+                for res_data in task_data.get('resources', []):
+                    conn.execute(
+                        "INSERT INTO resources (task_id, file_path, description, res_type, created_at) "
+                        "VALUES (?, ?, ?, ?, ?)",
+                        (task_id, res_data['path'], res_data.get('desc', ''),
+                         res_data.get('type', 'reference'), now)
+                    )
+                    output_lines.append(f"      [resource] {res_data['path']} ({res_data.get('type', 'reference')})")
+
                 for st_data in task_data.get('subtasks', []):
                     st_id = next_id(conn, project_id, 'T')
                     conn.execute(
@@ -366,6 +375,15 @@ def handle_import(args):
                     )
                     output_lines.append(f"      {st_id}: {st_data['title']}")
                     seq += 1
+
+                    for res_data in st_data.get('resources', []):
+                        conn.execute(
+                            "INSERT INTO resources (task_id, file_path, description, res_type, created_at) "
+                            "VALUES (?, ?, ?, ?, ?)",
+                            (st_id, res_data['path'], res_data.get('desc', ''),
+                             res_data.get('type', 'reference'), now)
+                        )
+                        output_lines.append(f"        [resource] {res_data['path']} ({res_data.get('type', 'reference')})")
 
         conn.commit()
         print('\n'.join(output_lines))
