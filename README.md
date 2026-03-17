@@ -132,8 +132,9 @@ See [docs/usage/commands.md](docs/usage/commands.md) for the full command refere
 | `task create/list/show/update/delete` | Task/SubTask CRUD |
 | `objective create/list/update/delete` | Objective CRUD |
 | `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow management |
+| `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo for re-execution |
 | `op start/progress/complete/error/interrupt/log` | Operations recording |
-| `resource add/list` | Resource management |
+| `resource add/list [--task/--workflow/--type]` | Resource management |
 | `query status/tasks/generate-todo/generate-ops` | Status queries and reports |
 | `setting set/get/list/delete` | Settings management |
 

@@ -53,6 +53,44 @@ This creates:
 
 ---
 
+## AI Agent Usage Scenarios
+
+TaskOps persists work plans and artifacts across agent sessions. Use these patterns to store, retrieve, and re-execute workflows.
+
+### Store a Plan for Later
+
+```bash
+python -m cli workflow create --title "API Migration Plan"
+python -m cli workflow import PRJ-W001 --structure '<json>'
+```
+
+### Resume a Plan in a New Session
+
+```bash
+python -m cli workflow list
+python -m cli query show --workflow PRJ-W001
+python -m cli workflow next
+```
+
+### Track Artifacts Produced by a Workflow
+
+```bash
+python -m cli resource add PRJ-T003 --path ./output/report.json --type output --desc "Final report"
+python -m cli resource add PRJ-T002 --path ./tmp/analysis.csv --type intermediate --desc "Raw analysis"
+python -m cli resource list --workflow PRJ-W001
+python -m cli resource list --workflow PRJ-W001 --type output
+```
+
+### Re-execute a Workflow
+
+```bash
+python -m cli workflow restart PRJ-W001
+python -m cli workflow restart PRJ-W001 --clear-ops
+python -m cli query show --workflow PRJ-W001
+```
+
+---
+
 ## Phase 2: Planning
 
 Decompose the project into ETS components.
@@ -232,6 +270,8 @@ python -m cli query generate-todo
 ```bash
 python -m cli resource add PRJ-T001 --path ./docs/spec.md --type input --desc "API spec"
 python -m cli resource list --task PRJ-T001
+python -m cli resource list --workflow PRJ-W001
+python -m cli resource list --workflow PRJ-W001 --type output
 ```
 
 ### Manage Settings
@@ -329,9 +369,10 @@ python -m cli query generate-todo
 | `task create/list/show/update/delete` | Task/SubTask CRUD |
 | `objective create/list/update/delete` | Objective CRUD |
 | `plan update --changes <json>` | Update plan: create/update/delete tasks and epics |
+| `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo for re-execution |
 | `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow management |
 | `op start/progress/complete/error/interrupt/log` | Operations recording |
-| `resource add/list` | Resource management |
+| `resource add/list [--task/--workflow/--type]` | Resource management |
 | `query status/tasks/generate-todo` | Status queries and reports |
 | `setting set/get/list/delete` | Settings management |
 | `project checkpoint [--note]` | Create a status snapshot |

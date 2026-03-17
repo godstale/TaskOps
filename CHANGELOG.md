@@ -115,6 +115,23 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 - `skills/taskops.md` — **Handling Reset Requests** section: when user asks to "reset" or "initialize", agent must present two explicit options (reset status only vs. delete plan) and wait for selection before acting
 - `docs/superpowers/` — internal planning and spec documents for v0.2.3 feature development
 
+## [0.2.5] - 2026-03-17
+
+### Added
+
+- `workflow create/list/delete` subcommands — manage named workflows
+- `workflow import <W-ID> --structure/--structure-file` — bulk import TODO→ETS structure with replace semantics
+- `workflow restart <W-ID> [--clear-ops]` — reset all tasks in a workflow to `todo`; auto-saves a checkpoint before restart; `--clear-ops` also removes operation history for that workflow
+- `resource list --workflow <W-ID>` — filter resources by workflow scope (joins tasks on `workflow_id`); combinable with `--type`
+- **AI Agent Usage Scenarios** section in `skills/taskops.md`, `skills/taskops-gemini.md`, and `SKILL.md` — cross-session patterns: store plan, resume in new session, track artifacts, re-execute workflow
+- DB schema v3 — `workflows` table; `workflow_id` foreign key on `tasks`
+
+### Changed
+
+- `query generate-todo` renamed to `query show`; outputs to stdout only (no file write)
+- `init` generates `TASKOPS.md` only; removed auto-generation of `AGENTS.md`, `SETTINGS.md`, and resource files
+- Skill docs updated for v0.2.5: workflow import flow, `query show` usage, and scope rules
+
 ## [Unreleased]
 
 - TBD

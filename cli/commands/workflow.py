@@ -33,6 +33,32 @@ def register(subparsers):
     current = sub.add_parser('current', help='Show currently active task')
     current.set_defaults(func=handle_current)
 
+    create = sub.add_parser('create', help='Create a new workflow')
+    create.add_argument('--title', required=True, help='Workflow title')
+    create.add_argument('--source-file', dest='source_file', help='Original TODO file path (optional)')
+    create.set_defaults(func=handle_create)
+
+    wf_list = sub.add_parser('list', help='List all workflows')
+    wf_list.set_defaults(func=handle_list)
+
+    delete = sub.add_parser('delete', help='Delete a workflow and all its tasks')
+    delete.add_argument('workflow_id', help='Workflow ID to delete (e.g. PRJ-W001)')
+    delete.set_defaults(func=handle_delete)
+
+    imp = sub.add_parser('import', help='Import TODO structure into workflow as ETS')
+    imp.add_argument('workflow_id', help='Target workflow ID (e.g. PRJ-W001)')
+    imp_group = imp.add_mutually_exclusive_group(required=True)
+    imp_group.add_argument('--structure', help='JSON structure string')
+    imp_group.add_argument('--structure-file', dest='structure_file',
+                           help='Path to JSON structure file')
+    imp.set_defaults(func=handle_import)
+
+    restart = sub.add_parser('restart', help='Reset workflow tasks to todo for re-execution')
+    restart.add_argument('workflow_id', help='Workflow ID to restart (e.g. PRJ-W001)')
+    restart.add_argument('--clear-ops', action='store_true',
+                         help='Also clear operation records for this workflow')
+    restart.set_defaults(func=handle_restart)
+
     parser.set_defaults(func=lambda args: parser.print_help())
 
 
@@ -189,5 +215,210 @@ def handle_current(args):
             # No output for scripting use (hooks)
             return
         print(row['id'])
+    finally:
+        close_connection(conn)
+
+
+def handle_create(args):
+    from .utils import get_project_id, next_workflow_id
+    from datetime import datetime
+    conn = get_db(args)
+    try:
+        project_id = get_project_id(conn)
+        wf_id = next_workflow_id(conn, project_id)
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        conn.execute(
+            "INSERT INTO workflows (id, project_id, title, source_file, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (wf_id, project_id, args.title, getattr(args, 'source_file', None), now)
+        )
+        conn.commit()
+        print(f"Created workflow {wf_id}: {args.title}")
+    finally:
+        close_connection(conn)
+
+
+def handle_list(args):
+    conn = get_db(args)
+    try:
+        rows = conn.execute(
+            "SELECT id, title, status, source_file FROM workflows ORDER BY id"
+        ).fetchall()
+        if not rows:
+            print("No workflows found.")
+            return
+        for row in rows:
+            src = f" (from: {row['source_file']})" if row['source_file'] else ""
+            print(f"  {row['id']}: {row['title']} [{row['status']}]{src}")
+    finally:
+        close_connection(conn)
+
+
+def handle_delete(args):
+    conn = get_db(args)
+    try:
+        wf = conn.execute(
+            "SELECT id FROM workflows WHERE id=?", (args.workflow_id,)
+        ).fetchone()
+        if not wf:
+            print(f"Workflow not found: {args.workflow_id}")
+            raise SystemExit(1)
+        # Cascade: delete operations and resources for tasks in this workflow, then tasks, then workflow
+        tasks = conn.execute(
+            "SELECT id FROM tasks WHERE workflow_id=?", (args.workflow_id,)
+        ).fetchall()
+        for task in tasks:
+            conn.execute("DELETE FROM operations WHERE task_id=?", (task['id'],))
+            conn.execute("DELETE FROM resources WHERE task_id=?", (task['id'],))
+        conn.execute("DELETE FROM tasks WHERE workflow_id=?", (args.workflow_id,))
+        conn.execute("DELETE FROM workflows WHERE id=?", (args.workflow_id,))
+        conn.commit()
+        print(f"Deleted workflow {args.workflow_id} and its tasks.")
+    finally:
+        close_connection(conn)
+
+
+def handle_import(args):
+    import json as _json
+    from datetime import datetime
+    from .utils import get_project_id, next_id
+
+    # Parse JSON input
+    if args.structure:
+        try:
+            structure = _json.loads(args.structure)
+        except _json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON: {e}")
+            raise SystemExit(1)
+    else:
+        try:
+            with open(args.structure_file, encoding='utf-8') as f:
+                structure = _json.load(f)
+        except FileNotFoundError:
+            print(f"Error: File not found: {args.structure_file}")
+            raise SystemExit(1)
+        except _json.JSONDecodeError as e:
+            print(f"Error: Invalid JSON in file: {e}")
+            raise SystemExit(1)
+
+    conn = get_db(args)
+    try:
+        # Validate workflow exists
+        wf = conn.execute(
+            "SELECT id, title FROM workflows WHERE id=?", (args.workflow_id,)
+        ).fetchone()
+        if not wf:
+            print(f"Error: Workflow not found: {args.workflow_id}")
+            raise SystemExit(1)
+
+        project_id = get_project_id(conn)
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+
+        # Replace: delete all existing tasks in this workflow
+        existing = conn.execute(
+            "SELECT id FROM tasks WHERE workflow_id=?", (args.workflow_id,)
+        ).fetchall()
+        for task in existing:
+            conn.execute("DELETE FROM operations WHERE task_id=?", (task['id'],))
+            conn.execute("DELETE FROM resources WHERE task_id=?", (task['id'],))
+        conn.execute("DELETE FROM tasks WHERE workflow_id=?", (args.workflow_id,))
+
+        output_lines = [f"Workflow {wf['id']}: {wf['title']}"]
+        seq = 1
+
+        for epic_data in structure.get('epics', []):
+            epic_id = next_id(conn, project_id, 'E')
+            conn.execute(
+                "INSERT INTO tasks "
+                "(id, project_id, type, title, description, status, "
+                "parent_id, workflow_id, created_at, updated_at) "
+                "VALUES (?, ?, 'epic', ?, ?, 'todo', ?, ?, ?, ?)",
+                (epic_id, project_id,
+                 epic_data['title'], epic_data.get('description', ''),
+                 project_id, args.workflow_id, now, now)
+            )
+            output_lines.append(f"  Epic {epic_id}: {epic_data['title']}")
+
+            for task_data in epic_data.get('tasks', []):
+                task_id = next_id(conn, project_id, 'T')
+                conn.execute(
+                    "INSERT INTO tasks "
+                    "(id, project_id, type, title, description, status, "
+                    "parent_id, workflow_id, seq_order, created_at, updated_at) "
+                    "VALUES (?, ?, 'task', ?, ?, 'todo', ?, ?, ?, ?, ?)",
+                    (task_id, project_id,
+                     task_data['title'], task_data.get('description', ''),
+                     epic_id, args.workflow_id, seq, now, now)
+                )
+                output_lines.append(f"    {task_id}: {task_data['title']}")
+                seq += 1
+
+                for st_data in task_data.get('subtasks', []):
+                    st_id = next_id(conn, project_id, 'T')
+                    conn.execute(
+                        "INSERT INTO tasks "
+                        "(id, project_id, type, title, description, status, "
+                        "parent_id, workflow_id, seq_order, created_at, updated_at) "
+                        "VALUES (?, ?, 'task', ?, ?, 'todo', ?, ?, ?, ?, ?)",
+                        (st_id, project_id,
+                         st_data['title'], st_data.get('description', ''),
+                         task_id, args.workflow_id, seq, now, now)
+                    )
+                    output_lines.append(f"      {st_id}: {st_data['title']}")
+                    seq += 1
+
+        conn.commit()
+        print('\n'.join(output_lines))
+    finally:
+        close_connection(conn)
+
+
+def handle_restart(args):
+    from datetime import datetime
+    from .utils import get_project_id
+
+    conn = get_db(args)
+    try:
+        # Validate workflow exists
+        wf = conn.execute(
+            "SELECT id, title FROM workflows WHERE id=?", (args.workflow_id,)
+        ).fetchone()
+        if not wf:
+            print(f"Workflow not found: {args.workflow_id}")
+            raise SystemExit(1)
+
+        # Auto-save checkpoint before restart
+        project_id = get_project_id(conn)
+        rows = conn.execute(
+            "SELECT id, status, interrupt FROM tasks "
+            "WHERE project_id=? AND type != 'project'",
+            (project_id,)
+        ).fetchall()
+        snapshot = {r['id']: {'status': r['status'], 'interrupt': r['interrupt']} for r in rows}
+        conn.execute(
+            "INSERT INTO checkpoints (note, snapshot) VALUES (?, ?)",
+            (f"[auto] before workflow restart {args.workflow_id}", json.dumps(snapshot))
+        )
+
+        # Reset only tasks belonging to this workflow
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        result = conn.execute(
+            "UPDATE tasks SET status='todo', interrupt=NULL, updated_at=? "
+            "WHERE workflow_id=? AND type != 'project'",
+            (now, args.workflow_id)
+        )
+        reset_count = result.rowcount
+
+        if args.clear_ops:
+            task_ids = conn.execute(
+                "SELECT id FROM tasks WHERE workflow_id=?", (args.workflow_id,)
+            ).fetchall()
+            for t in task_ids:
+                conn.execute("DELETE FROM operations WHERE task_id=?", (t['id'],))
+            print(f"  Operation history cleared for {args.workflow_id}.")
+
+        conn.commit()
+        print(f"Workflow {args.workflow_id} restarted: {reset_count} tasks reset to 'todo'")
+        print("  Auto-checkpoint saved before restart.")
     finally:
         close_connection(conn)

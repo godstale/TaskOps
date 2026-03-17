@@ -20,6 +20,7 @@ def register(subparsers):
 
     lst = sub.add_parser('list', help='List resources')
     lst.add_argument('--task', help='Filter by task ID')
+    lst.add_argument('--workflow', help='Filter by workflow ID')
     lst.add_argument('--type', dest='res_type', help='Filter by type')
     lst.set_defaults(func=handle_list)
 
@@ -49,10 +50,17 @@ def handle_add(args):
 def handle_list(args):
     conn = get_db(args)
     try:
-        query = "SELECT r.id, r.task_id, r.file_path, r.res_type, r.description FROM resources r"
+        query = (
+            "SELECT r.id, r.task_id, r.file_path, r.res_type, r.description "
+            "FROM resources r"
+        )
         conditions = []
         params = []
 
+        if args.workflow:
+            query += " JOIN tasks t ON r.task_id = t.id"
+            conditions.append("t.workflow_id=?")
+            params.append(args.workflow)
         if args.task:
             conditions.append("r.task_id=?")
             params.append(args.task)

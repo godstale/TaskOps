@@ -92,7 +92,7 @@ def test_migrate_v1_to_v2_sets_schema_version():
             "SELECT value FROM settings WHERE key='__schema_version'"
         ).fetchone()
         assert row is not None
-        assert row[0] == '2'
+        assert int(row[0]) >= 2
         close_connection(conn)
 
 

@@ -73,6 +73,72 @@ Available hooks:
 
 ---
 
+## AI Agent Usage Scenarios
+
+TaskOps persists work plans and artifacts across AI agent sessions. Use these patterns to store, retrieve, and re-execute workflows.
+
+### Store a Plan for Later
+
+Save a work plan as a workflow so any future session can pick it up:
+
+```bash
+# Create workflow
+python -m cli workflow create --title "API Migration Plan"
+
+# Import the structured plan
+python -m cli workflow import PRJ-W001 --structure '<json>'
+```
+
+### Resume a Plan in a New Session
+
+At session start, check what workflows exist and load the relevant one:
+
+```bash
+# List all workflows
+python -m cli workflow list
+
+# Load full task structure for a workflow
+python -m cli query show --workflow PRJ-W001
+
+# Find the next task to work on
+python -m cli workflow next
+```
+
+### Track Artifacts Produced by a Workflow
+
+Register files created during task execution as resources for later retrieval:
+
+```bash
+# Register an output file
+python -m cli resource add PRJ-T003 --path ./output/report.json --type output --desc "Final report"
+
+# Register intermediate work product
+python -m cli resource add PRJ-T002 --path ./tmp/analysis.csv --type intermediate --desc "Raw analysis"
+
+# Retrieve all artifacts from a workflow
+python -m cli resource list --workflow PRJ-W001
+
+# Retrieve only final outputs
+python -m cli resource list --workflow PRJ-W001 --type output
+```
+
+### Re-execute a Workflow
+
+Reset a workflow's tasks to `todo` and run it again. Other workflows are unaffected:
+
+```bash
+# Restart a specific workflow (auto-saves checkpoint first)
+python -m cli workflow restart PRJ-W001
+
+# Restart and clear operation history
+python -m cli workflow restart PRJ-W001 --clear-ops
+
+# Verify reset state
+python -m cli query show --workflow PRJ-W001
+```
+
+---
+
 ## Phase 2: Planning
 
 Decompose the project into ETS components.
@@ -264,9 +330,10 @@ python -m cli setting list
 | `task create/list/show/update/delete` | Task/SubTask CRUD |
 | `objective create/list/update/delete` | Objective CRUD |
 | `plan update --changes <json>` | Update plan: create/update/delete tasks and epics |
-| `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow management |
+| `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow ordering and execution |
+| `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo for re-execution |
 | `op start/progress/complete/error/interrupt/log` | Operations recording |
-| `resource add/list` | Resource management |
+| `resource add/list [--task/--workflow/--type]` | Resource management |
 | `query status/tasks/generate-todo` | Status queries and reports |
 | `setting set/get/list/delete` | Settings management |
 

@@ -30,7 +30,6 @@ def register(subparsers):
 def handle(args):
     project_path = os.path.abspath(args.path)
     os.makedirs(project_path, exist_ok=True)
-    os.makedirs(os.path.join(project_path, 'resources'), exist_ok=True)
 
     db_path = os.path.join(project_path, 'taskops.db')
     conn = get_connection(db_path)
@@ -53,22 +52,24 @@ def handle(args):
         )
     conn.commit()
 
-    # Generate template files
+    # Generate TASKOPS.md only
     template_vars = {
         'project_name': args.name,
         'prefix': args.prefix,
         'timestamp': now,
     }
-    for tmpl_name in ['TODO.md.tmpl', 'AGENTS.md.tmpl', 'SETTINGS.md.tmpl']:
-        tmpl_path = os.path.join(TEMPLATE_DIR, tmpl_name)
-        out_name = tmpl_name.replace('.tmpl', '')
-        out_path = os.path.join(project_path, out_name)
-        with open(tmpl_path, 'r', encoding='utf-8') as f:
-            tmpl = Template(f.read())
-        with open(out_path, 'w', encoding='utf-8') as f:
-            f.write(tmpl.safe_substitute(template_vars))
+    tmpl_path = os.path.join(TEMPLATE_DIR, 'TASKOPS.md.tmpl')
+    out_path = os.path.join(project_path, 'TASKOPS.md')
+    with open(tmpl_path, 'r', encoding='utf-8') as f:
+        tmpl = Template(f.read())
+    with open(out_path, 'w', encoding='utf-8') as f:
+        f.write(tmpl.safe_substitute(template_vars))
 
     close_connection(conn)
     print(f"Project '{args.name}' initialized at {project_path}")
-    print(f"  Prefix: {args.prefix}")
-    print(f"  DB: {db_path}")
+    print(f"  Prefix:  {args.prefix}")
+    print(f"  DB:      {db_path}")
+    print(f"  Guide:   {out_path}")
+    print()
+    print("Next step — add the following to your CLAUDE.md or AGENTS.md:")
+    print("  @TASKOPS.md")

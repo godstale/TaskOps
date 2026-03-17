@@ -161,18 +161,20 @@ def test_plan_invalid_json():
         assert 'Error' in result.stdout
 
 
-def test_plan_update_regenerates_todo_md():
+def test_plan_update_does_not_regenerate_todo_md():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
+        # Remove any TODO.md created by init
+        todo_path = os.path.join(pp, 'TODO.md')
+        if os.path.exists(todo_path):
+            os.remove(todo_path)
         changes = json.dumps({
             "create": [{"type": "task", "title": "New Task", "parent_id": "TST-E001"}]
         })
-        run_cli('--db', db, 'plan', 'update', '--changes', changes)
-        todo_path = os.path.join(pp, 'TODO.md')
-        assert os.path.exists(todo_path)
-        with open(todo_path, encoding='utf-8') as f:
-            content = f.read()
-        assert 'New Task' in content
+        result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
+        assert result.returncode == 0
+        # plan update should NOT write TODO.md anymore
+        assert not os.path.exists(todo_path)
 
 
 def test_plan_update_from_file():
