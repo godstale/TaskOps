@@ -61,15 +61,24 @@ Do NOT proceed with either option until the user explicitly selects one.
 
 ## Phase 1: Initialization
 
-Initialize a new TaskOps project in the target directory.
+> **⚠️ Path Rule:** `python -m cli` must run from the TaskOps repo directory (where the `cli/` package lives). Always pass `--db` with the **absolute path** to the target project's DB file so the database is created inside the user's project — not inside the TaskOps installation.
+
+Initialize a new TaskOps project:
 
 ```bash
-python -m cli init --name "Project Name" --prefix PRJ --path ./project-path
+# Replace /absolute/path/to/project/taskops.db with the actual project path
+python -m cli --db /absolute/path/to/project/taskops.db init --name "Project Name" --prefix PRJ
+```
+
+All subsequent commands must also use `--db`:
+
+```bash
+python -m cli --db /absolute/path/to/project/taskops.db <command> <subcommand> ...
 ```
 
 This creates:
-- `taskops.db` — SQLite database
-- `TASKOPS.md` — Project reference guide
+- `taskops.db` — SQLite database (at the path specified by `--db`)
+- `TASKOPS.md` — Project reference guide (in the same directory)
 
 After init, add to your project's CLAUDE.md or AGENTS.md:
   @TASKOPS.md
@@ -107,11 +116,13 @@ TaskOps is designed to persist work plans and artifacts across AI agent sessions
 Save a work plan as a workflow so any future session can pick it up:
 
 ```bash
+DB=/absolute/path/to/project/taskops.db
+
 # Create workflow
-python -m cli workflow create --title "API Migration Plan"
+python -m cli --db $DB workflow create --title "API Migration Plan"
 
 # Import the structured plan
-python -m cli workflow import PRJ-W001 --structure '<json>'
+python -m cli --db $DB workflow import PRJ-W001 --structure '<json>'
 ```
 
 ### Resume a Plan in a New Session
@@ -119,14 +130,16 @@ python -m cli workflow import PRJ-W001 --structure '<json>'
 At session start, check what workflows exist and load the relevant one:
 
 ```bash
+DB=/absolute/path/to/project/taskops.db
+
 # List all workflows
-python -m cli workflow list
+python -m cli --db $DB workflow list
 
 # Load full task structure for a workflow
-python -m cli query show --workflow PRJ-W001
+python -m cli --db $DB query show --workflow PRJ-W001
 
 # Find the next task to work on
-python -m cli workflow next
+python -m cli --db $DB workflow next
 ```
 
 ### Track Artifacts Produced by a Workflow
@@ -178,16 +191,18 @@ Project
   └── Objective — Milestone or deadline
 ```
 
-### Import a TODO List
+### Create Workflow and Import Plan (Required Step)
+
+**Always create a workflow first.** Tasks not linked to a workflow are invisible in TaskBoard's Workflow view.
 
 1. Create a workflow:
 ```bash
-python -m cli workflow create --title "My Plan"
+python -m cli --db /absolute/path/to/project/taskops.db workflow create --title "My Plan"
 ```
 
-2. Convert your TODO list to JSON and import:
+2. Convert your TODO list to JSON and import into the workflow:
 ```bash
-python -m cli workflow import {PREFIX}-W001 --structure '<json>'
+python -m cli --db /absolute/path/to/project/taskops.db workflow import {PREFIX}-W001 --structure '<json>'
 ```
 
 JSON format:
@@ -197,17 +212,32 @@ JSON format:
     {
       "title": "Phase 1: Setup",
       "tasks": [
-        {"title": "Task title", "description": "optional",
-         "subtasks": [{"title": "SubTask title"}]}
+        {
+          "title": "Task title",
+          "description": "optional",
+          "resources": [
+            {"path": "./output/report.html", "type": "output", "desc": "Final report"}
+          ],
+          "subtasks": [
+            {
+              "title": "SubTask title",
+              "resources": [
+                {"path": "./tmp/data.csv", "type": "intermediate", "desc": "Raw data"}
+              ]
+            }
+          ]
+        }
       ]
     }
   ]
 }
 ```
 
+`resources` is optional per task/subtask. `type`: `input` | `output` | `reference` | `intermediate`. When you know what files a task will produce, declare them here so they appear in TaskBoard's Resource tab from the start.
+
 3. Verify imported structure:
 ```bash
-python -m cli query show
+python -m cli --db /absolute/path/to/project/taskops.db query show
 ```
 
 ### Define Workflow Order
@@ -296,11 +326,23 @@ With hooks configured, `on_tool_use.sh` records progress automatically on each t
 ### Complete a Task
 
 ```bash
+# Register output files produced by this task (required if task produced files)
+python -m cli --db /absolute/path/to/project/taskops.db resource add PRJ-T001 --path ./output/report.html --type output --desc "Final HTML report"
+
 # Mark task as done
-python -m cli task update PRJ-T001 --status done
-python -m cli op complete PRJ-T001 --summary "Login API complete, all tests pass"
-python -m cli query show
+python -m cli --db /absolute/path/to/project/taskops.db task update PRJ-T001 --status done
+python -m cli --db /absolute/path/to/project/taskops.db op complete PRJ-T001 --summary "Login API complete, all tests pass"
+python -m cli --db /absolute/path/to/project/taskops.db query show
 ```
+
+**Resource registration rule:** Any file created, modified, or referenced by a task must be registered with `resource add` before marking the task done. This populates TaskBoard's Resource tab.
+
+| File role | `--type` value |
+|-----------|----------------|
+| Input spec / reference doc | `input` |
+| Final deliverable | `output` |
+| Intermediate/temp file | `intermediate` |
+| External link / docs URL | `reference` |
 
 If hooks are configured, use `bash hooks/on_task_complete.sh PRJ-T001` instead.
 
@@ -458,7 +500,9 @@ python -m cli query show
 | `project rollback --checkpoint <id>` | Restore task statuses from checkpoint |
 | `project restart [--clear-ops]` | Reset all tasks to todo |
 
-All commands use: `python -m cli [--db path] <command> <subcommand> [options]`
+All commands use: `python -m cli --db /absolute/path/to/project/taskops.db <command> <subcommand> [options]`
+
+> **Always specify `--db` with an absolute path.** `python -m cli` must be run from the TaskOps repo directory, so omitting `--db` will search from that directory — not your project.
 
 ---
 
