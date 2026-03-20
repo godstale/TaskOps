@@ -1,6 +1,6 @@
 # TaskOps DB Schema Reference
 
-> Schema Version: 3
+> Schema Version: 4
 > DB Engine: SQLite (Python built-in `sqlite3`)
 > File: `taskops.db` (created in project root by `python -m cli init`)
 
@@ -154,6 +154,7 @@ CREATE TABLE operations (
     input_tokens     INTEGER,
     output_tokens    INTEGER,
     duration_seconds INTEGER,
+    workflow_id      TEXT,                     -- references workflows(id), nullable (v4+)
     started_at       TEXT,
     completed_at     TEXT,
     created_at       TEXT NOT NULL DEFAULT (datetime('now')),
@@ -183,6 +184,7 @@ CREATE TABLE resources (
     description TEXT,
     res_type    TEXT NOT NULL DEFAULT 'reference'
                 CHECK(res_type IN ('input','output','reference','intermediate')),
+    workflow_id TEXT,                          -- references workflows(id), nullable (v4+)
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     FOREIGN KEY (task_id) REFERENCES tasks(id)
 );
@@ -221,7 +223,7 @@ CREATE TABLE settings (
 | `use_subagent` | `true` | Sub Agent 사용 허용 여부 |
 | `parallel_execution` | `true` | 병렬 Task 동시 실행 허용 여부 |
 | `progress_interval` | `major_steps` | 진행 기록 간격 (`every_tool\|major_steps\|start_end_only`) |
-| `__schema_version` | `3` | DB 스키마 버전 (내부 사용) |
+| `__schema_version` | `4` | DB 스키마 버전 (내부 사용) |
 
 ---
 
@@ -257,8 +259,10 @@ CREATE INDEX idx_tasks_parent     ON tasks(parent_id);
 CREATE INDEX idx_tasks_type       ON tasks(type);
 CREATE INDEX idx_tasks_status     ON tasks(status);
 CREATE INDEX idx_workflows_project ON workflows(project_id);
-CREATE INDEX idx_operations_task  ON operations(task_id);
-CREATE INDEX idx_resources_task   ON resources(task_id);
+CREATE INDEX idx_operations_task     ON operations(task_id);
+CREATE INDEX idx_operations_workflow ON operations(workflow_id);
+CREATE INDEX idx_resources_task      ON resources(task_id);
+CREATE INDEX idx_resources_workflow  ON resources(workflow_id);
 ```
 
 ---
@@ -270,5 +274,6 @@ CREATE INDEX idx_resources_task   ON resources(task_id);
 | v1 | 초기 스키마 (tasks, operations, resources, settings) |
 | v2 | operations에 `tool_name`, `skill_name`, `mcp_name`, `retry_count`, `input_tokens`, `output_tokens`, `duration_seconds` 추가 |
 | v3 | `workflows` 테이블 추가, `tasks.workflow_id` 컬럼 추가, `checkpoints` 테이블 추가 |
+| v4 | `operations.workflow_id`, `resources.workflow_id` 컬럼 추가. 기존 데이터는 `tasks.workflow_id`에서 역으로 채움 (backfill) |
 
 마이그레이션은 `cli/db/schema.py`의 `migrate_schema()` 함수가 자동 처리. DB 연결 시 버전 확인 후 미적용 마이그레이션을 순서대로 실행.
