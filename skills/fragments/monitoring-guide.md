@@ -48,9 +48,6 @@ python -m cli query status
 # Filter tasks by status
 python -m cli query tasks --status in_progress
 
-# Regenerate TODO.md from current state
-python -m cli query generate-todo
-
 # Query operation history directly from DB
 python -m cli op log
 python -m cli op log --task <TASK_ID>
@@ -63,4 +60,3 @@ python -m cli op log --task <TASK_ID>
 3. Include specific details in summaries (file names, counts, what was done)
 4. Use `op error` for blockers that need resolution
 5. Use `op interrupt` when switching away from a task temporarily
-6. Run `query generate-todo` after completing tasks to keep TODO.md current

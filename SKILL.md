@@ -1,13 +1,10 @@
 ---
 name: taskops
 description: >
-  Project task management skill using ETS (Epic-Task-SubTask) structure.
-  INVOKE AUTOMATICALLY — without waiting for user instruction — when:
-  (1) a project plan or implementation spec has been finalized and the user is about to start execution,
-  (2) a user presents a multi-step project and asks you to implement or build it,
-  (3) a new development session begins on a project that already has a taskops.db.
-  Use TaskOps BEFORE execution starts: initialize the DB, decompose the plan into Epics/Tasks, set workflow order, then begin work.
-  During execution, guide the user to launch TaskBoard for real-time monitoring.
+  Use when a project plan or implementation spec has been finalized and execution is about to begin,
+  a user presents a multi-step project and asks you to implement or build it,
+  or a session starts on a project that already has a taskops.db.
+  INVOKE AUTOMATICALLY — without waiting for user instruction.
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -44,10 +41,7 @@ python -m cli init --name "Project Name" --prefix PRJ --path ./project-path
 
 This creates:
 - `taskops.db` — SQLite database
-- `TODO.md` — Auto-generated task overview
-- `AGENTS.md` — Agent instructions
-- `SETTINGS.md` — Project settings
-- `resources/` — Resource file directory
+- `TASKOPS.md` — Project reference guide and AI agent instructions
 
 ### Configure Hooks
 
@@ -69,7 +63,7 @@ Register TaskOps hooks in `.claude/settings.json` (project-level):
 Available hooks:
 - `on_task_start.sh <TASK_ID>` — Sets task to `in_progress`, records `op start`
 - `on_tool_use.sh` — Records `op progress` for the current active task
-- `on_task_complete.sh <TASK_ID>` — Sets task to `done`, records `op complete`, regenerates TODO.md
+- `on_task_complete.sh <TASK_ID>` — Sets task to `done`, records `op complete`
 
 ---
 
@@ -203,13 +197,7 @@ JSON format:
 }
 ```
 
-Note: `parent_id` is **required** for `type: "task"` and must reference an existing epic or task. Any of `create`, `update`, `delete` may be omitted. After a successful update, `TODO.md` is regenerated automatically.
-
-### Generate TODO.md
-
-```bash
-python -m cli query generate-todo
-```
+Note: `parent_id` is **required** for `type: "task"` and must reference an existing epic or task. Any of `create`, `update`, `delete` may be omitted.
 
 ---
 
@@ -255,7 +243,6 @@ With hooks configured, `on_tool_use.sh` records progress automatically on each t
 # Mark task as done
 python -m cli task update PRJ-T001 --status done
 python -m cli op complete PRJ-T001 --summary "Login API complete, all tests pass"
-python -m cli query generate-todo
 ```
 
 If hooks are configured, use `bash hooks/on_task_complete.sh PRJ-T001` instead.
@@ -294,13 +281,6 @@ python -m cli op log --task PRJ-T001
 python -m cli workflow show
 ```
 
-### Regenerate Reports
-
-```bash
-# Regenerate TODO.md
-python -m cli query generate-todo
-```
-
 ### Manage Resources
 
 ```bash
@@ -334,7 +314,7 @@ python -m cli setting list
 | `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo for re-execution |
 | `op start/progress/complete/error/interrupt/log` | Operations recording |
 | `resource add/list [--task/--workflow/--type]` | Resource management |
-| `query status/tasks/generate-todo` | Status queries and reports |
+| `query status/tasks/show` | Status queries and workflow details |
 | `setting set/get/list/delete` | Settings management |
 
 All commands use: `python -m cli [--db path] <command> <subcommand> [options]`

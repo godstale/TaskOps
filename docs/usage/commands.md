@@ -18,7 +18,7 @@ python -m cli init --name NAME --prefix PREFIX [--path PATH]
 | `--prefix` | Yes | ID prefix (e.g., `PRJ` → `PRJ-T001`) |
 | `--path` | No | Target directory (default: current dir) |
 
-Creates `taskops.db`, `TODO.md`, `AGENTS.md`, `SETTINGS.md`, `resources/`.
+Creates `taskops.db`, `TASKOPS.md`.
 
 ---
 
@@ -156,7 +156,6 @@ The `--changes` parameter accepts a JSON object with up to three keys:
 ### Notes
 
 - Any of `create`, `update`, `delete` may be omitted
-- After a successful update, `TODO.md` is regenerated automatically
 - IDs must match the pattern `PREFIX-T###` or `PREFIX-E###`
 - Parent references must exist in the database before update
 
@@ -270,11 +269,11 @@ Shows project-wide summary: total tasks, counts by status, progress percentage.
 python -m cli query tasks [--status STATUS] [--epic EPIC_ID]
 ```
 
-### `query generate-todo`
+### `query show`
 ```bash
-python -m cli query generate-todo
+python -m cli query show [--workflow W_ID]
 ```
-Regenerates `TODO.md` from current DB state.
+Shows full task structure. Use `--workflow` to filter by workflow.
 
 ---
 

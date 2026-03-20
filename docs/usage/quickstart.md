@@ -32,10 +32,7 @@ This creates:
 | File | Purpose |
 |------|---------|
 | `taskops.db` | SQLite database (all project data) |
-| `TODO.md` | Auto-generated task overview |
-| `AGENTS.md` | AI Agent instructions |
-| `SETTINGS.md` | Project settings |
-| `resources/` | Resource file directory |
+| `TASKOPS.md` | Project reference guide and AI agent instructions |
 
 ## Step 2: Plan with ETS Structure
 
@@ -71,9 +68,6 @@ python -m cli workflow set-parallel --group "auth-core" MYP-T001 MYP-T002
 
 # Add dependencies
 python -m cli workflow add-dep MYP-T003 --depends-on MYP-T001 MYP-T002
-
-# Generate TODO.md
-python -m cli query generate-todo
 ```
 
 ## Step 4: Execute Tasks
@@ -92,7 +86,6 @@ python -m cli op progress MYP-T001 --summary "Implemented 3 of 5 endpoints"
 # Complete a task
 python -m cli task update MYP-T001 --status done
 python -m cli op complete MYP-T001 --summary "Login API complete, all tests pass"
-python -m cli query generate-todo
 ```
 
 ## Step 5: Monitor Progress

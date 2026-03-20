@@ -15,7 +15,7 @@ TaskOps gives AI Agents a structured way to manage multi-step projects across se
 - **ETS Hierarchy**: Decompose projects into Epics → Tasks → SubTasks
 - **Workflow Engine**: Sequential and parallel execution with dependency tracking
 - **Operations Log**: Record start/progress/complete/error/interrupt events per task
-- **Auto Reports**: Generate `TODO.md` and `TASK_OPERATIONS.md` from DB state
+- **Query & Reports**: View project status, task lists, and workflow details
 - **Resource Tracking**: Link files to tasks
 - **Settings Store**: Key-value config synced to `SETTINGS.md`
 - **Visual Monitoring**: Use [TaskBoard](https://github.com/godstale/TaskBoard) to view project status in a live GUI (TUI or Electron desktop app)
@@ -35,7 +35,6 @@ python -m cli task create --parent MYP-E001 --title "Implement API"
 
 # Set workflow order
 python -m cli workflow set-order MYP-T001
-python -m cli query generate-todo
 
 # Execute
 python -m cli workflow next          # -> MYP-T001
@@ -44,7 +43,6 @@ python -m cli op start MYP-T001 --platform claude_code
 # ... do the work ...
 python -m cli task update MYP-T001 --status done
 python -m cli op complete MYP-T001 --summary "API complete"
-python -m cli query generate-todo
 ```
 
 See [docs/usage/quickstart.md](docs/usage/quickstart.md) for the full guide.
@@ -135,7 +133,7 @@ See [docs/usage/commands.md](docs/usage/commands.md) for the full command refere
 | `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo for re-execution |
 | `op start/progress/complete/error/interrupt/log` | Operations recording |
 | `resource add/list [--task/--workflow/--type]` | Resource management |
-| `query status/tasks/generate-todo/generate-ops` | Status queries and reports |
+| `query status/tasks/show` | Status queries and workflow details |
 | `setting set/get/list/delete` | Settings management |
 
 ## Requirements

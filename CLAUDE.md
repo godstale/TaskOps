@@ -4,8 +4,10 @@ TaskOps is a skill for AI Agents (Claude Code, Gemini CLI) that manages complex 
 
 ## Project Status
 
-- Phase: Released (v0.2.2)
-- Design Doc: `docs/design/TASKOPS_DESIGN.md`
+- Phase: Released (v0.2.5)
+- DB schema: `docs/DB_SCHEMA.md`
+- Skill documents: `SKILL.md`
+- Readme: `README.md`
 
 ## Architecture
 

@@ -1,9 +1,9 @@
 ---
 name: taskops
 description: >
-  Project task management skill using ETS (Epic-Task-SubTask) structure.
-  Invoke when: user explicitly requests TaskOps, user wants to manage a TODO list as tracked tasks,
-  user wants to monitor AI execution progress, or a session starts on a project that already has taskops.db.
+  Use when user explicitly requests TaskOps, wants to manage a TODO list as tracked tasks,
+  has a plan/spec and wants to start execution, wants to monitor AI execution progress,
+  or a session starts on a project that already has taskops.db.
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -15,6 +15,7 @@ Trigger conditions (any one is sufficient):
 - User wants to manage a TODO list as tracked tasks
 - User wants to monitor AI execution progress
 - Session starts and `taskops.db` exists in the project directory (resume mode)
+- User creates a plan in plan mode or writes a TODO list → offer to save as a TaskOps workflow
 
 ## Prerequisites
 
@@ -82,6 +83,8 @@ This creates:
 
 After init, add to your project's CLAUDE.md or AGENTS.md:
   @TASKOPS.md
+
+> This ensures TASKOPS.md is loaded at the start of every session, giving the AI agent the full command reference and operation recording rules for this project.
 
 ### Configure Hooks (Optional / Advanced)
 
@@ -165,15 +168,31 @@ python -m cli resource list --workflow PRJ-W001 --type output
 Reset a workflow's tasks to `todo` and run it again. Other workflows are unaffected:
 
 ```bash
-# Restart a specific workflow (auto-saves checkpoint first)
+# Restart a specific workflow (auto-saves checkpoint first, preserves operation history)
 python -m cli workflow restart PRJ-W001
 
-# Restart and clear operation history
+# Restart and delete all operation records for this workflow from the operations table
 python -m cli workflow restart PRJ-W001 --clear-ops
 
 # Verify reset state
 python -m cli query show --workflow PRJ-W001
 ```
+
+> `workflow restart` resets ALL tasks in the workflow to `todo`. With `--clear-ops`, operation records for this workflow are deleted from the operations table. Other workflows and their operation records are not affected.
+
+---
+
+## Confirm Before Saving as Workflow
+
+**When the user has created a plan (plan mode output, TODO list, or structured task breakdown), always ask before saving:**
+
+> 이 계획을 TaskOps 워크플로우로 저장할까요?
+> 저장하면 작업 진행 상황을 추적하고, 이후 세션에서도 이어서 작업할 수 있습니다.
+
+- If the user confirms → proceed with Phase 2 (create workflow and import plan)
+- If the user declines → continue without TaskOps
+
+**TaskOps로 작업을 관리하려면 반드시 작업 내역을 워크플로우로 저장해야 합니다.** Workflow에 연결되지 않은 Task는 TaskBoard에서 보이지 않으며, 워크플로우 단위 조회/재실행/롤백이 불가능합니다.
 
 ---
 
@@ -409,8 +428,6 @@ python -m cli setting set commit_style "conventional" --desc "Commit message sty
 python -m cli setting get commit_style
 python -m cli setting list
 ```
-
----
 
 ---
 
