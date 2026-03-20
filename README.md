@@ -14,9 +14,9 @@ TaskOps gives AI Agents a structured way to manage multi-step projects across se
 
 - **ETS Hierarchy**: Decompose projects into Epics → Tasks → SubTasks
 - **Workflow Engine**: Sequential and parallel execution with dependency tracking
-- **Operations Log**: Record start/progress/complete/error/interrupt events per task
+- **Operations Log**: Record start/progress/complete/error/interrupt events per task, with automatic workflow association
 - **Query & Reports**: View project status, task lists, and workflow details
-- **Resource Tracking**: Link files to tasks
+- **Resource Tracking**: Link files to tasks with automatic workflow association
 - **Settings Store**: Key-value config synced to `SETTINGS.md`
 - **Visual Monitoring**: Use [TaskBoard](https://github.com/godstale/TaskBoard) to view project status in a live GUI (TUI or Electron desktop app)
 
@@ -131,8 +131,9 @@ See [docs/usage/commands.md](docs/usage/commands.md) for the full command refere
 | `objective create/list/update/delete` | Objective CRUD |
 | `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow management |
 | `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo for re-execution |
-| `op start/progress/complete/error/interrupt/log` | Operations recording |
-| `resource add/list [--task/--workflow/--type]` | Resource management |
+| `op start/progress/complete/error/interrupt/log` | Operations recording (auto-sets workflow_id) |
+| `op log [--task/--workflow]` | View operation log with optional filters |
+| `resource add/list [--task/--workflow/--type]` | Resource management (auto-sets workflow_id) |
 | `query status/tasks/show` | Status queries and workflow details |
 | `setting set/get/list/delete` | Settings management |
 
