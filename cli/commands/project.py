@@ -130,7 +130,6 @@ def handle_rollback(args):
     close_connection(conn)
     print(f"Rolled back to checkpoint #{args.checkpoint}: {note}")
     print(f"  Restored: {restored} tasks")
-    print("  Regenerate TODO.md: python -m cli query generate-todo")
 
 
 def handle_restart(args):
@@ -160,4 +159,3 @@ def handle_restart(args):
     tasks_reset = len(snapshot)
     print(f"Project restarted: {tasks_reset} tasks reset to 'todo'")
     print("  Auto-checkpoint saved before restart.")
-    print("  Regenerate TODO.md: python -m cli query generate-todo")

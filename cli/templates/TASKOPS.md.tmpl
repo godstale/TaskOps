@@ -1,144 +1,84 @@
-# ${project_name} — TaskOps Reference
+# ${project_name} — TaskOps
 
-> Prefix: ${prefix} | DB: taskops.db | Created: ${timestamp}
+> Prefix: `${prefix}` | DB: `taskops.db`
 
-⚠️ **TaskOps manages only `taskops.db` and this file. It does NOT modify any other project files.**
-
----
-
-## When to Update TaskOps
-
-| Event | Commands |
-|-------|----------|
-| New TODO list to track | `workflow create` → `workflow import` |
-| Start working on a task | `task update <ID> --status in_progress` + `op start <ID>` |
-| Complete a task | `task update <ID> --status done` + `op complete <ID>` |
-| Plan changes (full replace) | `workflow import <W-ID> --structure '<json>'` |
-| Minor plan tweak | `plan update --changes '<json>'` |
-| Check current state | `query show` or `query status` |
+⚠️ TaskOps only manages `taskops.db` and this file.
 
 ---
 
-## TODO → ETS Conversion Guide
+## Agent Rules
 
-Your existing TODO list maps to TaskOps structure as follows:
+### 1. Operation Recording
 
-| TODO element | TaskOps element |
-|-------------|----------------|
-| Section header (`## Phase 1`) | Epic |
-| Checkbox item (`- [ ] Do X`) | Task |
-| Nested checkbox | SubTask (Task with Task parent) |
+| Event | Command |
+|-------|---------|
+| Start task | `op start <T-ID> --platform <claude_code\|gemini_cli>` |
+| Major milestone | `op progress <T-ID> --summary "..."` |
+| Complete | `op complete <T-ID> --summary "..."` |
+| Error | `op error <T-ID> --summary "..."` |
+| Blocked | `op interrupt <T-ID> --summary "..."` |
 
-One TODO list = one Workflow (`${prefix}-W001`, `${prefix}-W002`, ...).
+Call `op progress` after: implementing a component, creating/modifying a key file, writing/passing tests, resolving a bug, or switching tasks.
 
-**To import a TODO list:**
+### 2. Resource Registration
 
-1. Convert your TODO list to this JSON format:
-```json
-{
-  "epics": [
-    {
-      "title": "Phase 1: Setup",
-      "tasks": [
-        {
-          "title": "Task title",
-          "description": "optional detail",
-          "subtasks": [{"title": "SubTask title"}]
-        }
-      ]
-    }
-  ]
-}
-```
+Register every file created/modified before marking a task done:
 
-2. Create a workflow and import:
 ```bash
-python -m cli --db taskops.db workflow create --title "My Plan"
-python -m cli --db taskops.db workflow import ${prefix}-W001 --structure '<json>'
-```
-
-3. Verify the result:
-```bash
-python -m cli --db taskops.db query show
+python -m cli --db taskops.db resource add <T-ID> --path <path> --type <input|output|intermediate|reference> --desc "..."
 ```
 
 ---
 
 ## Command Reference
 
-All commands: `python -m cli [--db <path>] <command> <subcommand> [options]`
+`python -m cli [--db <path>] <command> <subcommand> [options]`
 
-### Workflow
-```bash
-workflow create --title "..." [--source-file <path>]
-workflow list
-workflow import <W-ID> --structure '<json>'
-workflow import <W-ID> --structure-file <path.json>
-workflow delete <W-ID>
-workflow set-order <T-ID> <T-ID> ...
-workflow set-parallel --group <name> <T-ID> ...
-workflow add-dep <T-ID> --depends-on <T-ID> ...
-workflow show
-workflow next
-workflow current
+### workflow
+```
+create --title "..." [--source-file <path>]
+list | show | delete <W-ID>
+import <W-ID> --structure '<json>' | --structure-file <path>
+restart <W-ID> [--clear-ops]
+set-order <T-ID> ... | set-parallel --group <name> <T-ID> ... | add-dep <T-ID> --depends-on <T-ID>
+next | current
 ```
 
-### Epic / Task
-```bash
-epic create --title "..." [--description "..."]
-epic list | show <E-ID> | update <E-ID> --status <status> | delete <E-ID>
-
-task create --parent <E-ID or T-ID> --title "..."
-task list [--epic <E-ID>] [--status <status>]
-task show <T-ID>
-task update <T-ID> --status <todo|in_progress|interrupted|done|cancelled>
-task update <T-ID> --status interrupted --interrupt "reason"
+### epic / task
+```
+epic create --title "..." | list | show <E-ID> | update <E-ID> --status <status> | delete <E-ID>
+task create --parent <E-ID|T-ID> --title "..."
+task list [--epic <E-ID>] [--status <status>] | show <T-ID>
+task update <T-ID> --status <todo|in_progress|interrupted|done|cancelled> [--interrupt "reason"]
 task delete <T-ID>
 ```
 
-### Plan (partial updates to existing workflow)
-```bash
-plan update --changes '<json>' [--workflow <W-ID>]
-# JSON: {"create": [...], "update": [...], "delete": [...]}
+### plan
+```
+plan update --changes '{"create":[...],"update":[...],"delete":[...]}' [--workflow <W-ID>]
 ```
 
-### Operations
-```bash
-op start <T-ID> --platform <claude_code|gemini_cli>
-op progress <T-ID> --summary "..."
-op complete <T-ID> --summary "..."
-op error <T-ID> --summary "..."
-op interrupt <T-ID> --summary "..."
+### op / resource / query
+```
+op start|progress|complete|error|interrupt <T-ID> --summary "..." [--platform ...]
 op log [--task <T-ID>]
+resource add <T-ID> --path <path> --type <type> --desc "..."
+resource list --task <T-ID> | --workflow <W-ID> [--type <type>]
+query show [--workflow <W-ID>] | status | tasks [--status <status>]
 ```
 
-### Query / Status
-```bash
-query show [--workflow <W-ID>]
-query status
-query tasks [--status <status>]
+### objective / setting / project
+```
+objective create --title "..." --milestone "..." | --due-date YYYY-MM-DD
+objective list | update <O-ID> --status done
+setting set <key> <value> | get <key> | list | delete <key>
+project checkpoint [--note "..."] | checkpoint list | rollback --checkpoint <id> | restart [--clear-ops]
 ```
 
-### Objective
-```bash
-objective create --title "..." --milestone "..."
-objective create --title "..." --due-date YYYY-MM-DD
-objective list
-objective update <O-ID> --status done
-```
+---
 
-### Settings
-```bash
-setting set <key> <value> [--desc "..."]
-setting get <key>
-setting list
-setting delete <key>
-```
+## Workflow Import Format
 
-### Project (rollback / restart)
-```bash
-project checkpoint [--note "..."]
-project checkpoint list
-project rollback --checkpoint <id>
-project restart [--clear-ops]
+```json
+{"epics":[{"title":"Phase 1","tasks":[{"title":"Task","description":"...","subtasks":[{"title":"SubTask"}],"resources":[{"path":"./out.html","type":"output","desc":"..."}]}]}]}
 ```
