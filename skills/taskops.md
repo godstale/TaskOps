@@ -64,17 +64,47 @@ Do NOT proceed with either option until the user explicitly selects one.
 
 > **⚠️ Path Rule:** `python -m cli` runs from the TaskOps repo directory (where the `cli/` package lives), **not** the user's project. Set `TASKOPS_DB` to the absolute path of the project's DB file at session start — all subsequent commands will use it automatically.
 
-Set the environment variable once at session start:
+### ⛔ Required Setup Sequence
+
+**반드시 아래 순서를 지켜야 합니다. 어떤 단계도 건너뛸 수 없습니다.**
+
+| Step | Command | Purpose |
+|------|---------|---------|
+| 1 | `export TASKOPS_DB=...` | DB 경로 설정 |
+| 2 | `python -m cli init --name "..." --prefix PRJ` | 프로젝트 생성 (이름 + prefix 필수) |
+| 3 | `python -m cli workflow create --title "..."` | Workflow 생성 (모든 작업의 컨테이너) |
+| 4 | `python -m cli workflow import PRJ-W001 --structure '<json>'` | Epic/Task 일괄 등록 (workflow에 연결) |
+
+> **⚠️ Step 3 (workflow create)를 건너뛰면 모든 Task의 `workflow_id`가 NULL이 되어 workflow 기반 조회/실행이 불가능합니다.**
+> **⚠️ Step 4를 건너뛰고 개별 `epic create`/`task create`를 반복 호출하지 마세요.** `workflow import`가 유일한 정상 등록 경로입니다.
+
+### Step 1 — DB 경로 설정
 
 ```bash
 export TASKOPS_DB=/absolute/path/to/project/taskops.db
 ```
 
-Then initialize (DB and TASKOPS.md are created at the `TASKOPS_DB` path):
+### Step 2 — 프로젝트 초기화
 
 ```bash
 python -m cli init --name "Project Name" --prefix PRJ
 ```
+
+This creates:
+- `taskops.db` — SQLite database (at the path specified by `TASKOPS_DB`)
+- `TASKOPS.md` — Project reference guide (in the same directory)
+
+### Step 3 — Workflow 생성
+
+```bash
+python -m cli workflow create --title "My Plan"
+```
+
+> Workflow는 Epic/Task를 묶는 컨테이너입니다. **Task를 등록하기 전에 반드시 Workflow를 먼저 생성하세요.**
+
+### Step 4 — Phase 2로 이동하여 `workflow import`로 작업 등록
+
+→ Phase 2: Planning 참조
 
 All subsequent commands resolve the DB automatically via `TASKOPS_DB`:
 
@@ -87,10 +117,6 @@ Alternatively, pass `--db` explicitly on each command (overrides `TASKOPS_DB`):
 ```bash
 python -m cli --db /absolute/path/to/project/taskops.db <command> <subcommand> ...
 ```
-
-This creates:
-- `taskops.db` — SQLite database (at the path specified by `--db`)
-- `TASKOPS.md` — Project reference guide (in the same directory)
 
 After init, add to your project's CLAUDE.md or AGENTS.md:
   @TASKOPS.md
@@ -233,9 +259,11 @@ Task and SubTask are identical in structure. A "SubTask" is simply a Task whose 
 
 ### Create Workflow and Import Plan (Required)
 
-**항상 `workflow import`로 일괄 등록하세요.** 개별 `epic create` / `task create` 반복 호출은 느리고 오류가 발생하기 쉽습니다.
+> **⛔ 개별 `epic create` / `task create` 반복 호출은 금지합니다.**
+> 모든 Epic/Task는 반드시 `workflow import`로 일괄 등록해야 합니다.
+> 개별 호출은 `workflow_id`가 누락되고, 느리며, 오류가 발생하기 쉽습니다.
 
-**Step 1 — Workflow 생성:**
+**Step 1 — Workflow 생성** (Phase 1에서 이미 완료되었다면 건너뛰기):
 ```bash
 python -m cli --db /absolute/path/to/project/taskops.db workflow create --title "My Plan"
 ```
@@ -379,16 +407,23 @@ pnpm --filter @taskboard/tui dev -- --path /path/to/project-root
 
 Work through tasks following the workflow order.
 
+> **⛔ 실행 시 필수 기록 규칙:**
+> - **`op start`**: Task 시작 시 반드시 호출 — 호출하지 않으면 operations 테이블이 비어 진행 이력이 사라집니다.
+> - **`op complete`**: Task 완료 시 반드시 호출
+> - **`resource add`**: Task에서 생성/수정한 파일이 있으면 반드시 등록 — 등록하지 않으면 resources 테이블이 비어 산출물 추적이 불가능합니다.
+
 ### Start a Task
 
 ```bash
 # Check next executable task (filter by workflow to avoid cross-workflow noise)
 python -m cli workflow next --workflow PRJ-W001
 
-# Start the task (op start auto-resolves workflow_id from the task)
+# Start the task — 두 명령 모두 필수
 python -m cli task update PRJ-T001 --status in_progress
 python -m cli op start PRJ-T001 --platform claude_code
 ```
+
+> **⚠️ `task update --status in_progress`만 호출하고 `op start`를 빠뜨리지 마세요.** 둘 다 호출해야 operations 테이블에 이력이 기록됩니다.
 
 If hooks are configured, use `bash hooks/on_task_start.sh PRJ-T001` instead.
 
@@ -403,9 +438,12 @@ With hooks configured, `on_tool_use.sh` records progress automatically on each t
 
 ### Complete a Task
 
-**⛔ REQUIRED: Follow these steps in order. Do NOT skip Step 2.**
+**⛔ REQUIRED: Follow these steps in order. Do NOT skip any step.**
 
-**Step 1 — Register all artifacts produced**
+> Task를 `done`으로 변경하기 전에 반드시 resource 등록과 op complete를 수행해야 합니다.
+> 이를 건너뛰면 resources, operations 테이블이 비게 됩니다.
+
+**Step 1 — Register all artifacts produced (필수)**
 
 Register every file created, modified, or referenced during the task — including intermediate outputs.
 
