@@ -377,7 +377,7 @@ def handle_import(args):
                     )
                     output_lines.append(f"      [resource] {res_data['path']} ({res_data.get('type', 'reference')})")
 
-                for st_data in task_data.get('subtasks', []):
+                for st_data in task_data.get('tasks', task_data.get('subtasks', [])):
                     st_id = next_id(conn, project_id, 'T')
                     conn.execute(
                         "INSERT INTO tasks "
