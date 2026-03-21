@@ -13,9 +13,11 @@ def register(subparsers):
     create = sub.add_parser('create', help='Create a new epic')
     create.add_argument('--title', required=True, help='Epic title')
     create.add_argument('--description', default='', help='Epic description')
+    create.add_argument('--workflow', default=None, help='Workflow ID to associate with')
     create.set_defaults(func=handle_create)
 
     lst = sub.add_parser('list', help='List all epics')
+    lst.add_argument('--workflow', default=None, help='Filter by workflow ID')
     lst.set_defaults(func=handle_list)
 
     show = sub.add_parser('show', help='Show epic details')
@@ -42,10 +44,11 @@ def handle_create(args):
         project_id = get_project_id(conn)
         epic_id = next_id(conn, project_id, 'E')
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        workflow_id = getattr(args, 'workflow', None)
         conn.execute(
-            "INSERT INTO tasks (id, project_id, type, title, description, status, parent_id, created_at, updated_at) "
-            "VALUES (?, ?, 'epic', ?, ?, 'todo', ?, ?, ?)",
-            (epic_id, project_id, args.title, args.description, project_id, now, now)
+            "INSERT INTO tasks (id, project_id, type, title, description, status, parent_id, workflow_id, created_at, updated_at) "
+            "VALUES (?, ?, 'epic', ?, ?, 'todo', ?, ?, ?, ?)",
+            (epic_id, project_id, args.title, args.description, project_id, workflow_id, now, now)
         )
         conn.commit()
         print(f"Created epic: {epic_id} - {args.title}")
@@ -56,9 +59,14 @@ def handle_create(args):
 def handle_list(args):
     conn = get_db(args)
     try:
-        rows = conn.execute(
-            "SELECT id, title, status FROM tasks WHERE type='epic' ORDER BY id"
-        ).fetchall()
+        query = "SELECT id, title, status FROM tasks WHERE type='epic'"
+        params = []
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
+        query += " ORDER BY id"
+        rows = conn.execute(query, params).fetchall()
         if not rows:
             print("No epics found.")
             return
@@ -81,6 +89,7 @@ def handle_show(args):
         print(f"Epic: {row['id']}")
         print(f"  Title: {row['title']}")
         print(f"  Status: {row['status']}")
+        print(f"  Workflow: {row['workflow_id'] or '(none)'}")
         print(f"  Description: {row['description'] or '(none)'}")
         print(f"  Created: {row['created_at']}")
         print(f"  Updated: {row['updated_at']}")

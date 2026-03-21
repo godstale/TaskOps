@@ -36,17 +36,25 @@ Task and SubTask share the same ID sequence. A SubTask is simply a Task whose pa
 
 ## CLI Commands for Planning / 기획용 CLI 명령어
 
+> **Always pass `--workflow` when creating epics, tasks, and objectives individually.**
+> Items without a workflow_id are invisible in TaskBoard's Workflow view and cannot be filtered per workflow.
+> When using `workflow import`, workflow_id is set automatically — no need to pass it separately.
+
 ```bash
-# Create Epic
-python -m cli epic create --title "Feature Name" --description "Details"
+# Create Epic (always specify workflow)
+python -m cli epic create --title "Feature Name" --description "Details" --workflow {PREFIX}-W001
 
-# Create Task under Epic
-python -m cli task create --parent {PREFIX}-E001 --title "Implementation unit"
+# Create Task under Epic (always specify workflow)
+python -m cli task create --parent {PREFIX}-E001 --title "Implementation unit" --workflow {PREFIX}-W001
 
-# Create SubTask under Task
-python -m cli task create --parent {PREFIX}-T001 --title "Sub-step"
+# Create SubTask under Task (always specify workflow)
+python -m cli task create --parent {PREFIX}-T001 --title "Sub-step" --workflow {PREFIX}-W001
 
-# Create Objective
-python -m cli objective create --title "MVP Complete" --milestone "Core features done"
+# Create Objective (associate with workflow if relevant)
+python -m cli objective create --title "MVP Complete" --milestone "Core features done" --workflow {PREFIX}-W001
 python -m cli objective create --title "Demo Day" --due-date 2026-04-01
+
+# List by workflow
+python -m cli epic list --workflow {PREFIX}-W001
+python -m cli task list --workflow {PREFIX}-W001
 ```

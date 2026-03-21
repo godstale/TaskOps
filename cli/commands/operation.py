@@ -13,6 +13,7 @@ def register(subparsers):
     start = sub.add_parser('start', help='Record task start')
     start.add_argument('task_id', help='Task ID')
     start.add_argument('--platform', default='unknown', help='Agent platform')
+    start.add_argument('--workflow', default=None, help='Workflow ID (auto-resolved from task if omitted)')
     start.set_defaults(func=handle_start)
 
     progress = sub.add_parser('progress', help='Record progress')
@@ -23,6 +24,7 @@ def register(subparsers):
     progress.add_argument('--tool', default=None, help='Tool used (e.g., Edit, Write, Bash)')
     progress.add_argument('--skill', default=None, help='Skill invoked')
     progress.add_argument('--mcp', default=None, help='MCP server used')
+    progress.add_argument('--workflow', default=None, help='Workflow ID (auto-resolved from task if omitted)')
     progress.set_defaults(func=handle_progress)
 
     complete = sub.add_parser('complete', help='Record task completion')
@@ -37,20 +39,24 @@ def register(subparsers):
                           help='Number of retries (default 0)')
     complete.add_argument('--duration', type=int, default=None, dest='duration',
                           help='Duration in seconds')
+    complete.add_argument('--workflow', default=None, help='Workflow ID (auto-resolved from task if omitted)')
     complete.set_defaults(func=handle_complete)
 
     error = sub.add_parser('error', help='Record error')
     error.add_argument('task_id', help='Task ID')
     error.add_argument('--summary', required=True, help='Error summary')
+    error.add_argument('--workflow', default=None, help='Workflow ID (auto-resolved from task if omitted)')
     error.set_defaults(func=handle_error)
 
     interrupt = sub.add_parser('interrupt', help='Record interruption')
     interrupt.add_argument('task_id', help='Task ID')
     interrupt.add_argument('--summary', required=True, help='Interrupt reason')
+    interrupt.add_argument('--workflow', default=None, help='Workflow ID (auto-resolved from task if omitted)')
     interrupt.set_defaults(func=handle_interrupt)
 
     log = sub.add_parser('log', help='Show operation log')
     log.add_argument('--task', help='Filter by task ID')
+    log.add_argument('--workflow', default=None, help='Filter by workflow ID')
     log.set_defaults(func=handle_log)
 
     parser.set_defaults(func=lambda args: parser.print_help())
@@ -63,15 +69,27 @@ def _validate_task(conn, task_id):
         raise SystemExit(1)
 
 
+def _resolve_workflow_id(conn, args):
+    """Resolve workflow_id: use --workflow if given, else auto-resolve from task's workflow_id."""
+    wf = getattr(args, 'workflow', None)
+    if wf:
+        return wf
+    row = conn.execute(
+        "SELECT workflow_id FROM tasks WHERE id=?", (args.task_id,)
+    ).fetchone()
+    return row['workflow_id'] if row else None
+
+
 def handle_start(args):
     conn = get_db(args)
     try:
         _validate_task(conn, args.task_id)
+        workflow_id = _resolve_workflow_id(conn, args)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
-            "INSERT INTO operations (task_id, operation_type, agent_platform, started_at, created_at) "
-            "VALUES (?, 'start', ?, ?, ?)",
-            (args.task_id, args.platform, now, now)
+            "INSERT INTO operations (task_id, operation_type, agent_platform, workflow_id, started_at, created_at) "
+            "VALUES (?, 'start', ?, ?, ?, ?)",
+            (args.task_id, args.platform, workflow_id, now, now)
         )
         conn.commit()
         print(f"Operation started: {args.task_id} (platform: {args.platform})")
@@ -83,14 +101,15 @@ def handle_progress(args):
     conn = get_db(args)
     try:
         _validate_task(conn, args.task_id)
+        workflow_id = _resolve_workflow_id(conn, args)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
             "INSERT INTO operations (task_id, operation_type, summary, details, "
-            "subagent_used, tool_name, skill_name, mcp_name, created_at) "
-            "VALUES (?, 'progress', ?, ?, ?, ?, ?, ?, ?)",
+            "subagent_used, tool_name, skill_name, mcp_name, workflow_id, created_at) "
+            "VALUES (?, 'progress', ?, ?, ?, ?, ?, ?, ?, ?)",
             (args.task_id, args.summary, args.details,
              1 if args.subagent else 0,
-             args.tool, args.skill, args.mcp, now)
+             args.tool, args.skill, args.mcp, workflow_id, now)
         )
         conn.commit()
         print(f"Progress recorded: {args.task_id} - {args.summary}")
@@ -102,15 +121,16 @@ def handle_complete(args):
     conn = get_db(args)
     try:
         _validate_task(conn, args.task_id)
+        workflow_id = _resolve_workflow_id(conn, args)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
             "INSERT INTO operations (task_id, operation_type, summary, details, "
             "input_tokens, output_tokens, retry_count, duration_seconds, "
-            "completed_at, created_at) "
-            "VALUES (?, 'complete', ?, ?, ?, ?, ?, ?, ?, ?)",
+            "workflow_id, completed_at, created_at) "
+            "VALUES (?, 'complete', ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (args.task_id, args.summary, args.details,
              args.tokens_in, args.tokens_out, args.retry_count, args.duration,
-             now, now)
+             workflow_id, now, now)
         )
         conn.commit()
         print(f"Operation completed: {args.task_id} - {args.summary}")
@@ -122,11 +142,12 @@ def handle_error(args):
     conn = get_db(args)
     try:
         _validate_task(conn, args.task_id)
+        workflow_id = _resolve_workflow_id(conn, args)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
-            "INSERT INTO operations (task_id, operation_type, summary, created_at) "
-            "VALUES (?, 'error', ?, ?)",
-            (args.task_id, args.summary, now)
+            "INSERT INTO operations (task_id, operation_type, summary, workflow_id, created_at) "
+            "VALUES (?, 'error', ?, ?, ?)",
+            (args.task_id, args.summary, workflow_id, now)
         )
         conn.commit()
         print(f"Error recorded: {args.task_id} - {args.summary}")
@@ -138,11 +159,12 @@ def handle_interrupt(args):
     conn = get_db(args)
     try:
         _validate_task(conn, args.task_id)
+        workflow_id = _resolve_workflow_id(conn, args)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
-            "INSERT INTO operations (task_id, operation_type, summary, created_at) "
-            "VALUES (?, 'interrupt', ?, ?)",
-            (args.task_id, args.summary, now)
+            "INSERT INTO operations (task_id, operation_type, summary, workflow_id, created_at) "
+            "VALUES (?, 'interrupt', ?, ?, ?)",
+            (args.task_id, args.summary, workflow_id, now)
         )
         conn.commit()
         print(f"Interrupt recorded: {args.task_id} - {args.summary}")
@@ -153,15 +175,17 @@ def handle_interrupt(args):
 def handle_log(args):
     conn = get_db(args)
     try:
+        query = "SELECT * FROM operations WHERE 1=1"
+        params = []
         if args.task:
-            rows = conn.execute(
-                "SELECT * FROM operations WHERE task_id=? ORDER BY created_at",
-                (args.task,)
-            ).fetchall()
-        else:
-            rows = conn.execute(
-                "SELECT * FROM operations ORDER BY created_at"
-            ).fetchall()
+            query += " AND task_id=?"
+            params.append(args.task)
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
+        query += " ORDER BY created_at"
+        rows = conn.execute(query, params).fetchall()
 
         if not rows:
             print("No operations found.")

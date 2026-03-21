@@ -62,16 +62,27 @@ Do NOT proceed with either option until the user explicitly selects one.
 
 ## Phase 1: Initialization
 
-> **⚠️ Path Rule:** `python -m cli` must run from the TaskOps repo directory (where the `cli/` package lives). Always pass `--db` with the **absolute path** to the target project's DB file so the database is created inside the user's project — not inside the TaskOps installation.
+> **⚠️ Path Rule:** `python -m cli` runs from the TaskOps repo directory (where the `cli/` package lives), **not** the user's project. Set `TASKOPS_DB` to the absolute path of the project's DB file at session start — all subsequent commands will use it automatically.
 
-Initialize a new TaskOps project:
+Set the environment variable once at session start:
 
 ```bash
-# Replace /absolute/path/to/project/taskops.db with the actual project path
-python -m cli --db /absolute/path/to/project/taskops.db init --name "Project Name" --prefix PRJ
+export TASKOPS_DB=/absolute/path/to/project/taskops.db
 ```
 
-All subsequent commands must also use `--db`:
+Then initialize (DB and TASKOPS.md are created at the `TASKOPS_DB` path):
+
+```bash
+python -m cli init --name "Project Name" --prefix PRJ
+```
+
+All subsequent commands resolve the DB automatically via `TASKOPS_DB`:
+
+```bash
+python -m cli <command> <subcommand> ...
+```
+
+Alternatively, pass `--db` explicitly on each command (overrides `TASKOPS_DB`):
 
 ```bash
 python -m cli --db /absolute/path/to/project/taskops.db <command> <subcommand> ...
@@ -141,8 +152,8 @@ python -m cli --db $DB workflow list
 # Load full task structure for a workflow
 python -m cli --db $DB query show --workflow PRJ-W001
 
-# Find the next task to work on
-python -m cli --db $DB workflow next
+# Find the next task to work on (filter by workflow to avoid cross-workflow noise)
+python -m cli --db $DB workflow next --workflow PRJ-W001
 ```
 
 ### Track Artifacts Produced by a Workflow
@@ -193,6 +204,11 @@ python -m cli query show --workflow PRJ-W001
 - If the user declines → continue without TaskOps
 
 **TaskOps로 작업을 관리하려면 반드시 작업 내역을 워크플로우로 저장해야 합니다.** Workflow에 연결되지 않은 Task는 TaskBoard에서 보이지 않으며, 워크플로우 단위 조회/재실행/롤백이 불가능합니다.
+
+> **workflow_id 규칙:**
+> - `workflow import` → workflow_id 자동 설정 ✅
+> - `epic/task/objective create`, `plan update` 개별 사용 → `--workflow <W-ID>` 반드시 명시 ⚠️
+> - `op start/progress/complete/error/interrupt`, `resource add` → task의 workflow_id에서 자동 상속 ✅
 
 ---
 
@@ -323,10 +339,10 @@ Work through tasks following the workflow order.
 ### Start a Task
 
 ```bash
-# Check next executable task
-python -m cli workflow next
+# Check next executable task (filter by workflow to avoid cross-workflow noise)
+python -m cli workflow next --workflow PRJ-W001
 
-# Start the task
+# Start the task (op start auto-resolves workflow_id from the task)
 python -m cli task update PRJ-T001 --status in_progress
 python -m cli op start PRJ-T001 --platform claude_code
 ```
@@ -344,17 +360,19 @@ With hooks configured, `on_tool_use.sh` records progress automatically on each t
 
 ### Complete a Task
 
+**⛔ REQUIRED: Follow these steps in order. Do NOT skip Step 2.**
+
+**Step 1 — Register all artifacts produced**
+
+Register every file created, modified, or referenced during the task — including intermediate outputs.
+
 ```bash
-# Register output files produced by this task (required if task produced files)
+# Register final output
 python -m cli --db /absolute/path/to/project/taskops.db resource add PRJ-T001 --path ./output/report.html --type output --desc "Final HTML report"
 
-# Mark task as done
-python -m cli --db /absolute/path/to/project/taskops.db task update PRJ-T001 --status done
-python -m cli --db /absolute/path/to/project/taskops.db op complete PRJ-T001 --summary "Login API complete, all tests pass"
-python -m cli --db /absolute/path/to/project/taskops.db query show
+# Register intermediate file
+python -m cli --db /absolute/path/to/project/taskops.db resource add PRJ-T001 --path ./tmp/analysis.csv --type intermediate --desc "Raw analysis data"
 ```
-
-**Resource registration rule:** Any file created, modified, or referenced by a task must be registered with `resource add` before marking the task done. This populates TaskBoard's Resource tab.
 
 | File role | `--type` value |
 |-----------|----------------|
@@ -362,6 +380,22 @@ python -m cli --db /absolute/path/to/project/taskops.db query show
 | Final deliverable | `output` |
 | Intermediate/temp file | `intermediate` |
 | External link / docs URL | `reference` |
+
+**Step 2 — Verify resources are registered**
+
+```bash
+python -m cli --db /absolute/path/to/project/taskops.db resource list --task PRJ-T001
+```
+
+> ⛔ If the list is empty or any expected file is missing, go back to Step 1 and register it. Do NOT proceed until all artifacts appear in the list.
+
+**Step 3 — Mark task done**
+
+```bash
+python -m cli --db /absolute/path/to/project/taskops.db task update PRJ-T001 --status done
+python -m cli --db /absolute/path/to/project/taskops.db op complete PRJ-T001 --summary "Login API complete, all tests pass"
+python -m cli --db /absolute/path/to/project/taskops.db query show --workflow PRJ-W001
+```
 
 If hooks are configured, use `bash hooks/on_task_complete.sh PRJ-T001` instead.
 
@@ -389,14 +423,21 @@ python -m cli op error PRJ-T001 --summary "Database connection failed"
 # Overall status with progress percentage
 python -m cli query status
 
-# List tasks by status
+# Workflow-scoped status
+python -m cli query status --workflow PRJ-W001
+
+# List tasks by status (optionally scoped to workflow)
 python -m cli query tasks --status in_progress
+python -m cli query tasks --workflow PRJ-W001 --status in_progress
 
 # View operation log for a task
 python -m cli op log --task PRJ-T001
 
-# View full workflow
-python -m cli workflow show
+# View operation log for entire workflow
+python -m cli op log --workflow PRJ-W001
+
+# View full workflow order
+python -m cli workflow show --workflow PRJ-W001
 ```
 
 ### View Task Structure
@@ -497,19 +538,29 @@ python -m cli query show
 | Command | Description |
 |---------|-------------|
 | `init --name --prefix --path` | Initialize project |
-| `epic create/list/show/update/delete` | Epic CRUD |
-| `task create/list/show/update/delete` | Task/SubTask CRUD |
-| `objective create/list/update/delete` | Objective CRUD |
+| `epic create --title [--workflow <W-ID>]` | Create epic (with workflow) |
+| `epic list [--workflow <W-ID>]` | List epics (filter by workflow) |
+| `epic show/update/delete` | Epic show/update/delete |
+| `task create --parent --title [--workflow <W-ID>]` | Create task (with workflow) |
+| `task list [--epic] [--parent] [--status] [--workflow <W-ID>]` | List tasks (filter by workflow) |
+| `task show/update/delete` | Task show/update/delete |
+| `objective create --title [--workflow <W-ID>]` | Create objective (with workflow) |
+| `objective list [--workflow <W-ID>]` | List objectives (filter by workflow) |
+| `objective update/delete` | Objective update/delete |
 | `plan update --changes <json> [--workflow <W-ID>]` | Update plan: create/update/delete tasks and epics |
 | `workflow create --title [--source-file]` | Create a workflow |
 | `workflow list` | List all workflows |
 | `workflow import <W-ID> --structure/--structure-file` | Import TODO→ETS |
 | `workflow delete <W-ID>` | Delete workflow and tasks |
 | `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo for re-execution |
-| `workflow set-order/set-parallel/add-dep/show/next/current` | Workflow ordering and execution |
-| `op start/progress/complete/error/interrupt/log` | Operations recording |
-| `resource add/list [--task/--workflow/--type]` | Resource management |
-| `query status/tasks` | Status queries |
+| `workflow set-order/set-parallel/add-dep` | Workflow ordering |
+| `workflow show/next/current [--workflow <W-ID>]` | Workflow execution (filter by workflow) |
+| `op start/progress/complete/error/interrupt [--workflow <W-ID>]` | Operations recording (auto-resolves workflow from task) |
+| `op log [--task] [--workflow <W-ID>]` | Operation log (filter by workflow) |
+| `resource add <task_id> --path [--workflow <W-ID>]` | Add resource (auto-resolves workflow from task) |
+| `resource list [--task] [--workflow <W-ID>] [--type]` | List resources (filter by workflow) |
+| `query status [--workflow <W-ID>]` | Status summary (filter by workflow) |
+| `query tasks [--status] [--workflow <W-ID>]` | List tasks (filter by workflow) |
 | `query show [--workflow <W-ID>]` | Print task structure to stdout |
 | `setting set/get/list/delete` | Settings management |
 | `project checkpoint [--note]` | Create a status snapshot |
