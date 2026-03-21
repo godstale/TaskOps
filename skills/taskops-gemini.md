@@ -4,6 +4,13 @@ description: >
   Use when user explicitly requests TaskOps in Gemini CLI, wants to manage a TODO list as tracked tasks,
   has a plan/spec and wants to start execution, wants to monitor AI execution progress,
   or a session starts on a project that already has taskops.db.
+conflicts:
+  mutual_exclusive:
+    - writing-plans
+    - executing-plans
+    - subagent-driven-development
+  safe_before:
+    - brainstorming
 ---
 
 # TaskOps — Project Management Skill for Gemini CLI
@@ -16,6 +23,22 @@ Trigger conditions (any one is sufficient):
 - User wants to monitor AI execution progress
 - Session starts and `taskops.db` exists in the project directory (resume mode)
 - User creates a plan or writes a TODO list → offer to save as a TaskOps workflow
+
+### Skill Coexistence Rules
+
+> **TaskOps uses its own planning and execution system (SQLite DB + CLI).** When TaskOps is active, do NOT invoke the following skills — they use incompatible tracking systems and will cause state conflicts:
+> - `writing-plans` — TaskOps replaces this with `workflow import`
+> - `executing-plans` — TaskOps replaces this with `op start/progress/complete`
+> - `subagent-driven-development` — TaskOps replaces this with workflow-level task management
+>
+> **Safe to use with TaskOps:**
+> - `brainstorming` — Can run BEFORE TaskOps activation. Its output (spec) feeds into `workflow import`.
+>
+> **Decision flow:**
+> 1. `brainstorming` produces a spec (safe — no tracking conflict)
+> 2. At the Planning Gate, user chooses TaskOps **or** other execution skills — never both
+> 3. If TaskOps chosen → use `workflow import` + `op` commands for all tracking
+> 4. If TaskOps declined → use other planning/execution tools as usual
 
 ## Prerequisites
 
@@ -168,7 +191,11 @@ python -m cli query show --workflow PRJ-W001
 > TaskOps를 사용하면 진행 상황을 추적하고, 이후 세션에서도 이어서 작업할 수 있습니다.
 
 - 사용자가 동의하면 → Phase 2 (workflow 생성 + plan import) 진행 후 Phase 3 실행
-- 사용자가 거절하면 → TaskOps 없이 Phase 3 실행으로 바로 진행
+- 사용자가 거절하면 → TaskOps 없이 실행 진행 (다른 실행 추적 도구 사용 가능)
+
+> **⚠️ 상호 배타 규칙:**
+> 이 게이트에서 사용자가 TaskOps를 선택하면, 이후 세션에서 `writing-plans`, `executing-plans`, `subagent-driven-development` 등 별도 추적 시스템을 사용하는 스킬을 호출하지 마세요.
+> 반대로 사용자가 TaskOps를 거절하면, TaskOps의 `op`/`resource` 명령을 호출하지 마세요.
 
 ---
 

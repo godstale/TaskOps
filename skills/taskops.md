@@ -4,6 +4,13 @@ description: >
   Use when user explicitly requests TaskOps, wants to manage a TODO list as tracked tasks,
   has a plan/spec and wants to start execution, wants to monitor AI execution progress,
   or a session starts on a project that already has taskops.db.
+conflicts:
+  mutual_exclusive:
+    - writing-plans      # TaskOps has its own planning system (workflow import)
+    - executing-plans    # TaskOps has its own execution tracking (op start/complete)
+    - subagent-driven-development  # TaskOps has its own task state management
+  safe_before:
+    - brainstorming      # Brainstorming can run before TaskOps; output feeds workflow import
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -16,6 +23,24 @@ Trigger conditions (any one is sufficient):
 - User wants to monitor AI execution progress
 - Session starts and `taskops.db` exists in the project directory (resume mode)
 - User creates a plan in plan mode or writes a TODO list → offer to save as a TaskOps workflow
+
+### Skill Coexistence Rules
+
+> **TaskOps uses its own planning and execution system (SQLite DB + CLI).** When TaskOps is active, do NOT invoke the following superpowers skills — they use incompatible tracking systems (TodoWrite-based) and will cause state conflicts:
+> - `writing-plans` — TaskOps replaces this with `workflow import`
+> - `executing-plans` — TaskOps replaces this with `op start/progress/complete`
+> - `subagent-driven-development` — TaskOps replaces this with workflow-level task management
+>
+> **Safe to use with TaskOps:**
+> - `brainstorming` — Can run BEFORE TaskOps activation. Its output (spec) feeds into `workflow import`.
+> - `verification-before-completion`, `requesting-code-review` — These do not conflict with TaskOps.
+> - `systematic-debugging`, `test-driven-development` — These operate at code level, not task tracking level.
+>
+> **Decision flow:**
+> 1. `brainstorming` produces a spec (safe — no tracking conflict)
+> 2. At the Planning Gate, user chooses TaskOps **or** superpowers execution skills — never both
+> 3. If TaskOps chosen → use `workflow import` + `op` commands for all tracking
+> 4. If TaskOps declined → use `writing-plans` + `executing-plans` as usual
 
 ## Prerequisites
 
@@ -70,7 +95,7 @@ Do NOT proceed with either option until the user explicitly selects one.
 
 | Step | Command | Purpose |
 |------|---------|---------|
-| 1 | `export TASKOPS_DB=...` | DB 경로 설정 |
+| 1 | `export TASKOPS_DB=...` + `export TASKOPS_ACTIVE=1` | DB 경로 설정 + hook 활성화 |
 | 2 | `python -m cli init --name "..." --prefix PRJ` | 프로젝트 생성 (이름 + prefix 필수) |
 | 3 | `python -m cli workflow create --title "..."` | Workflow 생성 (모든 작업의 컨테이너) |
 | 4 | `python -m cli workflow import PRJ-W001 --structure '<json>'` | Epic/Task 일괄 등록 (workflow에 연결) |
@@ -78,11 +103,14 @@ Do NOT proceed with either option until the user explicitly selects one.
 > **⚠️ Step 3 (workflow create)를 건너뛰면 모든 Task의 `workflow_id`가 NULL이 되어 workflow 기반 조회/실행이 불가능합니다.**
 > **⚠️ Step 4를 건너뛰고 개별 `epic create`/`task create`를 반복 호출하지 마세요.** `workflow import`가 유일한 정상 등록 경로입니다.
 
-### Step 1 — DB 경로 설정
+### Step 1 — DB 경로 및 활성화 설정
 
 ```bash
 export TASKOPS_DB=/absolute/path/to/project/taskops.db
+export TASKOPS_ACTIVE=1
 ```
+
+> `TASKOPS_ACTIVE=1`은 TaskOps hooks의 안전 가드입니다. 이 값이 설정되어야 `on_tool_use.sh` hook이 동작합니다.
 
 ### Step 2 — 프로젝트 초기화
 
@@ -140,9 +168,13 @@ Register TaskOps hooks in `.claude/settings.json` (project-level):
 }
 ```
 
+> **⚠️ Hook 안전 가드:** `on_tool_use.sh`는 환경 변수 `TASKOPS_ACTIVE=1`이 설정된 경우에만 동작합니다.
+> TaskOps를 활성화할 때 반드시 `export TASKOPS_ACTIVE=1`을 실행하세요.
+> 이 가드는 다른 실행 추적 스킬(executing-plans 등)이 활성화된 세션에서 의도치 않은 progress 기록이 발생하는 것을 방지합니다.
+
 Available hooks:
 - `on_task_start.sh <TASK_ID>` — Sets task to `in_progress`, records `op start`
-- `on_tool_use.sh` — Records `op progress` for the current active task
+- `on_tool_use.sh` — Records `op progress` for the current active task (requires `TASKOPS_ACTIVE=1`)
 - `on_task_complete.sh <TASK_ID>` — Sets task to `done`, records `op complete`
 
 ---
@@ -234,7 +266,11 @@ python -m cli query show --workflow PRJ-W001
 > TaskOps를 사용하면 진행 상황을 추적하고, 이후 세션에서도 이어서 작업할 수 있습니다.
 
 - 사용자가 동의하면 → Phase 2 (workflow 생성 + plan import) 진행 후 Phase 3 실행
-- 사용자가 거절하면 → TaskOps 없이 Phase 3 실행으로 바로 진행
+- 사용자가 거절하면 → TaskOps 없이 실행 진행 (이 경우 `writing-plans`/`executing-plans` 등 superpowers 스킬 사용 가능)
+
+> **⚠️ 상호 배타 규칙:**
+> 이 게이트에서 사용자가 TaskOps를 선택하면, 이후 세션에서 `writing-plans`, `executing-plans`, `subagent-driven-development` 스킬을 호출하지 마세요. 이들 스킬은 TodoWrite 기반 추적 시스템을 사용하여 TaskOps의 SQLite 기반 추적과 상태 불일치를 유발합니다.
+> 반대로 사용자가 TaskOps를 거절하면, TaskOps의 `op`/`resource` 명령을 호출하지 마세요.
 
 > **workflow_id 규칙:**
 > - `workflow import` → workflow_id 자동 설정 ✅
