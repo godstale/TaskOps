@@ -1,14 +1,10 @@
 """Project initialization command.
-프로젝트 초기화 커맨드. 폴더, DB, 템플릿 파일을 생성.
+프로젝트 초기화 커맨드. 폴더와 DB를 생성.
 """
 import os
 from datetime import datetime
-from string import Template
 
 from ..db.connection import get_connection, close_connection
-
-
-TEMPLATE_DIR = os.path.join(os.path.dirname(__file__), '..', 'templates')
 
 DEFAULT_SETTINGS = [
     ('autonomy_level', 'moderate', 'Agent autonomy level (low|moderate|high)'),
@@ -59,24 +55,7 @@ def handle(args):
         )
     conn.commit()
 
-    # Generate TASKOPS.md only
-    template_vars = {
-        'project_name': args.name,
-        'prefix': args.prefix,
-        'timestamp': now,
-    }
-    tmpl_path = os.path.join(TEMPLATE_DIR, 'TASKOPS.md.tmpl')
-    out_path = os.path.join(project_path, 'TASKOPS.md')
-    with open(tmpl_path, 'r', encoding='utf-8') as f:
-        tmpl = Template(f.read())
-    with open(out_path, 'w', encoding='utf-8') as f:
-        f.write(tmpl.safe_substitute(template_vars))
-
     close_connection(conn)
-    print(f"Project '{args.name}' initialized at {project_path}")
+    print(f"Project '{args.name}' initialized.")
     print(f"  Prefix:  {args.prefix}")
     print(f"  DB:      {db_path}")
-    print(f"  Guide:   {out_path}")
-    print()
-    print("Next step — add the following to your CLAUDE.md or AGENTS.md:")
-    print("  @TASKOPS.md")

@@ -25,7 +25,7 @@ def test_init_creates_project_structure():
         result = run_cli('init', '--name', 'My Project', '--prefix', 'TOS', '--path', project_path)
         assert result.returncode == 0
         assert os.path.exists(os.path.join(project_path, 'taskops.db'))
-        assert os.path.exists(os.path.join(project_path, 'TASKOPS.md'))
+        assert not os.path.exists(os.path.join(project_path, 'TASKOPS.md'))
 
 
 def test_init_creates_project_record_in_db():
@@ -59,12 +59,12 @@ def test_init_inserts_default_settings():
         conn.close()
 
 
-def test_init_creates_taskops_md():
+def test_init_does_not_create_taskops_md():
     with tempfile.TemporaryDirectory() as d:
         pp = os.path.join(d, 'proj')
         r = run_cli('init', '--name', 'My Project', '--prefix', 'MYP', '--path', pp)
         assert r.returncode == 0
-        assert os.path.exists(os.path.join(pp, 'TASKOPS.md'))
+        assert not os.path.exists(os.path.join(pp, 'TASKOPS.md'))
 
 
 def test_init_does_not_create_agents_md():
@@ -88,24 +88,12 @@ def test_init_does_not_create_resources_dir():
         assert not os.path.exists(os.path.join(pp, 'resources'))
 
 
-def test_init_taskops_md_contains_project_info():
-    with tempfile.TemporaryDirectory() as d:
-        pp = os.path.join(d, 'proj')
-        run_cli('init', '--name', 'My Project', '--prefix', 'MYP', '--path', pp)
-        with open(os.path.join(pp, 'TASKOPS.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert 'My Project' in content
-        assert 'MYP' in content
-        assert 'workflow' in content.lower()
-        assert 'query show' in content
-
-
-def test_init_prints_claude_md_reminder():
+def test_init_prints_success_message():
     with tempfile.TemporaryDirectory() as d:
         pp = os.path.join(d, 'proj')
         r = run_cli('init', '--name', 'P', '--prefix', 'P', '--path', pp)
-        assert 'TASKOPS.md' in r.stdout
-        assert ('CLAUDE.md' in r.stdout or 'AGENTS.md' in r.stdout)
+        assert r.returncode == 0
+        assert "initialized" in r.stdout.lower()
 
 
 def test_init_is_idempotent():
@@ -122,3 +110,4 @@ def test_init_output_message():
         result = run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', project_path)
         assert "Project 'Test' initialized" in result.stdout
         assert 'TST' in result.stdout
+
