@@ -41,3 +41,10 @@ hooks/                # Claude Code hooks
 All DB operations go through: `python cli/taskops.py <command> <subcommand> [options]`
 
 Commands: `init`, `epic`, `task`, `objective`, `workflow`, `op`, `resource`, `query`, `setting`
+
+## GIT commit rules
+
+- Git commit 전에 불필요한 파일은 gitignore 에 추가하거나 삭제해야 한다.
+- release 브랜치에 commit 하기 전에는 아래 파일들이 업데이트 되었는지 확인해야 한다.
+  - `README.md`, `README.ko.md`, `CHANGELOG.md`
+

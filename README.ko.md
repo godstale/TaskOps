@@ -53,18 +53,23 @@ python -m cli op complete MYP-T001 --summary "API 구현 완료"
 
 ## TaskBoard로 모니터링
 
-[TaskBoard](https://github.com/godstale/TaskBoard)는 TaskOps SQLite DB를 실시간으로 읽어 프로젝트 상태를 시각화하는 도구입니다. **터미널 UI (TUI)** 또는 **Electron 데스크탑 앱** 형태로 실행되며, DB 변경 시 자동으로 화면을 갱신합니다.
+TaskBoard는 TaskOps SQLite DB를 실시간으로 읽어 프로젝트 상태를 시각화하는 도구입니다. DB 변경 시 자동으로 화면을 갱신하며, 두 가지 독립 앱으로 제공됩니다:
+
+- **[TaskBoard-CLI](https://github.com/godstale/TaskBoard-CLI)** — 터미널 UI (TUI)
+- **[TaskBoard-App](https://github.com/godstale/TaskBoard-App)** — Electron 데스크탑 앱
 
 ```bash
-git clone https://github.com/godstale/TaskBoard.git
-cd TaskBoard
-pnpm install
-
 # TUI (터미널)
-pnpm --filter @taskboard/tui dev -- --path /path/to/your-project
+git clone https://github.com/godstale/TaskBoard-CLI.git
+cd TaskBoard-CLI
+pnpm install
+pnpm dev -- --path /path/to/your-project
 
 # Electron (데스크탑)
-pnpm --filter @taskboard/electron dev
+git clone https://github.com/godstale/TaskBoard-App.git
+cd TaskBoard-App
+pnpm install
+pnpm dev
 ```
 
 TaskBoard는 읽기 전용으로 동작하며 TaskOps DB에 쓰기 작업을 하지 않습니다. AI Agent가 작업을 진행하는 동안 진행 상황을 실시간으로 모니터링할 때 사용하세요.
