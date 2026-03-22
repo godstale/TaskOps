@@ -23,7 +23,8 @@ def setup_project(tmpdir):
     proj_path = os.path.join(tmpdir, 'wf-proj')
     run_cli('init', '--name', 'WFTest', '--prefix', 'WFT', '--path', proj_path)
     db = os.path.join(proj_path, 'taskops.db')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'WF Test Plan')  # → WFT-W001
+    run_cli('--db', db, 'epic', 'create', '--workflow', 'WFT-W001', '--title', 'Epic A')
     return proj_path, db
 
 
@@ -32,8 +33,8 @@ def test_sequential_workflow_next_first_task():
     To enforce sequential execution, use add-dep in addition to set-order."""
     with tempfile.TemporaryDirectory() as tmpdir:
         _, db = setup_project(tmpdir)
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 1')
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 2')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 1')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 2')
         run_cli('--db', db, 'workflow', 'set-order', 'WFT-T001', 'WFT-T002')
         # Add explicit dependency to enforce sequential execution
         run_cli('--db', db, 'workflow', 'add-dep', 'WFT-T002', '--depends-on', 'WFT-T001')
@@ -46,8 +47,8 @@ def test_sequential_workflow_next_first_task():
 def test_sequential_workflow_advances_after_done():
     with tempfile.TemporaryDirectory() as tmpdir:
         _, db = setup_project(tmpdir)
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 1')
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 2')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 1')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 2')
         run_cli('--db', db, 'workflow', 'set-order', 'WFT-T001', 'WFT-T002')
 
         run_cli('--db', db, 'task', 'update', 'WFT-T001', '--status', 'done')
@@ -59,8 +60,8 @@ def test_sequential_workflow_advances_after_done():
 def test_parallel_workflow_returns_both_tasks():
     with tempfile.TemporaryDirectory() as tmpdir:
         _, db = setup_project(tmpdir)
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 1')
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 2')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 1')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 2')
         run_cli('--db', db, 'workflow', 'set-parallel', '--group', 'grp-a', 'WFT-T001', 'WFT-T002')
 
         result = run_cli('--db', db, 'workflow', 'next')
@@ -71,8 +72,8 @@ def test_parallel_workflow_returns_both_tasks():
 def test_dependency_blocks_task_until_dep_done():
     with tempfile.TemporaryDirectory() as tmpdir:
         _, db = setup_project(tmpdir)
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 1')
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 2')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 1')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 2')
         run_cli('--db', db, 'workflow', 'set-order', 'WFT-T001', 'WFT-T002')
         run_cli('--db', db, 'workflow', 'add-dep', 'WFT-T002', '--depends-on', 'WFT-T001')
 
@@ -90,7 +91,7 @@ def test_dependency_blocks_task_until_dep_done():
 def test_workflow_next_empty_when_all_done():
     with tempfile.TemporaryDirectory() as tmpdir:
         _, db = setup_project(tmpdir)
-        run_cli('--db', db, 'task', 'create', '--parent', 'WFT-E001', '--title', 'Task 1')
+        run_cli('--db', db, 'task', 'create', '--workflow', 'WFT-W001', '--parent', 'WFT-E001', '--title', 'Task 1')
         run_cli('--db', db, 'workflow', 'set-order', 'WFT-T001')
         run_cli('--db', db, 'task', 'update', 'WFT-T001', '--status', 'done')
 

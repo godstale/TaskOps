@@ -22,9 +22,10 @@ def setup_project(tmpdir):
     proj_path = os.path.join(tmpdir, 'qry-proj')
     run_cli('init', '--name', 'QryTest', '--prefix', 'QRY', '--path', proj_path)
     db = os.path.join(proj_path, 'taskops.db')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
-    run_cli('--db', db, 'task', 'create', '--parent', 'QRY-E001', '--title', 'Task One')
-    run_cli('--db', db, 'task', 'create', '--parent', 'QRY-E001', '--title', 'Task Two')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'QRY Plan')  # → QRY-W001
+    run_cli('--db', db, 'epic', 'create', '--workflow', 'QRY-W001', '--title', 'Epic A')
+    run_cli('--db', db, 'task', 'create', '--workflow', 'QRY-W001', '--parent', 'QRY-E001', '--title', 'Task One')
+    run_cli('--db', db, 'task', 'create', '--workflow', 'QRY-W001', '--parent', 'QRY-E001', '--title', 'Task Two')
     run_cli('--db', db, 'workflow', 'set-order', 'QRY-T001', 'QRY-T002')
     return proj_path, db
 

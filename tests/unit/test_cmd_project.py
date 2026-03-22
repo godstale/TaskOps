@@ -22,22 +22,26 @@ def make_args(db_path, **kwargs):
 
 
 def seed_project(conn):
-    """Insert a minimal project + epic + 2 tasks into conn."""
+    """Insert a minimal project + workflow + epic + 2 tasks into conn."""
     conn.execute(
         "INSERT INTO tasks (id, project_id, type, title, status) VALUES (?,?,?,?,?)",
         ("TST", "TST", "project", "Test Project", "in_progress")
     )
     conn.execute(
-        "INSERT INTO tasks (id, project_id, type, title, status, parent_id) VALUES (?,?,?,?,?,?)",
-        ("TST-E001", "TST", "epic", "Epic 1", "todo", "TST")
+        "INSERT INTO workflows (id, project_id, title, status) VALUES (?,?,?,?)",
+        ("TST-TW", "TST", "Test Workflow", "active")
     )
     conn.execute(
-        "INSERT INTO tasks (id, project_id, type, title, status, parent_id) VALUES (?,?,?,?,?,?)",
-        ("TST-T001", "TST", "task", "Task 1", "todo", "TST-E001")
+        "INSERT INTO tasks (id, project_id, type, title, status, parent_id, workflow_id) VALUES (?,?,?,?,?,?,?)",
+        ("TW-E001", "TST", "epic", "Epic 1", "todo", "TST", "TST-TW")
     )
     conn.execute(
-        "INSERT INTO tasks (id, project_id, type, title, status, parent_id) VALUES (?,?,?,?,?,?)",
-        ("TST-T002", "TST", "task", "Task 2", "done", "TST-E001")
+        "INSERT INTO tasks (id, project_id, type, title, status, parent_id, workflow_id) VALUES (?,?,?,?,?,?,?)",
+        ("TW-T001", "TST", "task", "Task 1", "todo", "TW-E001", "TST-TW")
+    )
+    conn.execute(
+        "INSERT INTO tasks (id, project_id, type, title, status, parent_id, workflow_id) VALUES (?,?,?,?,?,?,?)",
+        ("TW-T002", "TST", "task", "Task 2", "done", "TW-E001", "TST-TW")
     )
     conn.commit()
 
@@ -49,17 +53,17 @@ def test_snapshot_excludes_project_row(tmp_db):
     seed_project(conn)
     snap = _snapshot_tasks(conn, "TST")
     assert "TST" not in snap           # project root excluded
-    assert "TST-E001" in snap          # epic included
-    assert "TST-T001" in snap
-    assert "TST-T002" in snap
+    assert "TW-E001" in snap          # epic included
+    assert "TW-T001" in snap
+    assert "TW-T002" in snap
 
 
 def test_snapshot_captures_status(tmp_db):
     conn, _ = tmp_db
     seed_project(conn)
     snap = _snapshot_tasks(conn, "TST")
-    assert snap["TST-T001"]["status"] == "todo"
-    assert snap["TST-T002"]["status"] == "done"
+    assert snap["TW-T001"]["status"] == "todo"
+    assert snap["TW-T002"]["status"] == "done"
 
 
 # ── _create_checkpoint ────────────────────────────────────────────────────────
@@ -86,7 +90,7 @@ def test_create_checkpoint_snapshot_is_valid_json(tmp_db):
     row = conn.execute("SELECT snapshot FROM checkpoints").fetchone()
     snap = json.loads(row["snapshot"])
     assert isinstance(snap, dict)
-    assert "TST-T001" in snap
+    assert "TW-T001" in snap
 
 
 def test_create_checkpoint_prints_id(tmp_db, capsys):
@@ -138,13 +142,13 @@ def test_rollback_restores_status(tmp_db):
     _create_checkpoint(make_args(db_path, note="snap1"))
 
     # change T002 to todo
-    conn.execute("UPDATE tasks SET status='todo' WHERE id='TST-T002'")
+    conn.execute("UPDATE tasks SET status='todo' WHERE id='TW-T002'")
     conn.commit()
 
     # rollback to checkpoint #1
     handle_rollback(make_args(db_path, checkpoint=1))
 
-    row = conn.execute("SELECT status FROM tasks WHERE id='TST-T002'").fetchone()
+    row = conn.execute("SELECT status FROM tasks WHERE id='TW-T002'").fetchone()
     assert row["status"] == "done"
 
 
@@ -178,15 +182,15 @@ def test_rollback_resets_post_checkpoint_tasks(tmp_db):
 
     # add T003 after checkpoint
     conn.execute(
-        "INSERT INTO tasks (id, project_id, type, title, status, parent_id) VALUES (?,?,?,?,?,?)",
-        ("TST-T003", "TST", "task", "Task 3", "done", "TST-E001")
+        "INSERT INTO tasks (id, project_id, type, title, status, parent_id, workflow_id) VALUES (?,?,?,?,?,?,?)",
+        ("TW-T003", "TST", "task", "Task 3", "done", "TW-E001", "TST-TW")
     )
     conn.commit()
 
     # rollback to snap before T003 existed
     handle_rollback(make_args(db_path, checkpoint=1))
 
-    row = conn.execute("SELECT status FROM tasks WHERE id='TST-T003'").fetchone()
+    row = conn.execute("SELECT status FROM tasks WHERE id='TW-T003'").fetchone()
     assert row["status"] == "todo"   # reset to todo since not in snapshot
 
 
@@ -220,7 +224,7 @@ def test_restart_clear_ops_deletes_operations(tmp_db):
     seed_project(conn)
     conn.execute(
         "INSERT INTO operations (task_id, operation_type, agent_platform) VALUES (?,?,?)",
-        ("TST-T001", "start", "test")
+        ("TW-T001", "start", "test")
     )
     conn.commit()
 
@@ -235,7 +239,7 @@ def test_restart_preserves_ops_by_default(tmp_db):
     seed_project(conn)
     conn.execute(
         "INSERT INTO operations (task_id, operation_type, agent_platform) VALUES (?,?,?)",
-        ("TST-T001", "start", "test")
+        ("TW-T001", "start", "test")
     )
     conn.commit()
 

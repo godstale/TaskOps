@@ -29,16 +29,17 @@ def test_workflow_create_returns_id():
         pp, db = setup_project(d)
         r = run_cli('--db', db, 'workflow', 'create', '--title', 'My Todo List')
         assert r.returncode == 0
-        assert 'TST-W001' in r.stdout
+        assert 'TST-MTL' in r.stdout
 
 
-def test_workflow_create_sequential_ids():
+def test_workflow_create_unique_ids():
+    """Each workflow gets a unique title-derived short ID."""
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_project(d)
         run_cli('--db', db, 'workflow', 'create', '--title', 'First')
         r = run_cli('--db', db, 'workflow', 'create', '--title', 'Second')
         assert r.returncode == 0
-        assert 'TST-W002' in r.stdout
+        assert 'TST-SW' in r.stdout
 
 
 def test_workflow_create_with_source_file():
@@ -47,7 +48,7 @@ def test_workflow_create_with_source_file():
         r = run_cli('--db', db, 'workflow', 'create', '--title', 'With Source',
                     '--source-file', 'plan.md')
         assert r.returncode == 0
-        assert 'TST-W001' in r.stdout
+        assert 'TST-WS' in r.stdout
 
 
 def test_workflow_list_shows_all():
@@ -73,7 +74,7 @@ def test_workflow_delete_removes_workflow():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_project(d)
         run_cli('--db', db, 'workflow', 'create', '--title', 'Temp')
-        r = run_cli('--db', db, 'workflow', 'delete', 'TST-W001')
+        r = run_cli('--db', db, 'workflow', 'delete', 'TST-TW')
         assert r.returncode == 0
         listed = run_cli('--db', db, 'workflow', 'list')
         assert 'Temp' not in listed.stdout
@@ -86,10 +87,10 @@ def test_workflow_delete_nonexistent_fails():
         assert r.returncode != 0
 
 
-def test_workflow_list_shows_source_file():
+def test_workflow_list_shows_description():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_project(d)
         run_cli('--db', db, 'workflow', 'create', '--title', 'Sourced',
-                '--source-file', 'todo.md')
+                '--description', 'A workflow with a description')
         r = run_cli('--db', db, 'workflow', 'list')
-        assert 'todo.md' in r.stdout
+        assert 'A workflow with a description' in r.stdout

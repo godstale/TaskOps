@@ -36,24 +36,28 @@ def test_full_project_lifecycle():
         assert not os.path.exists(os.path.join(proj, 'TASKOPS.md'))  # DB-only principle (v0.2.6)
 
         # --- Phase 2: Planning ---
+        # Create workflow (required before ETS creation)
+        r = cli('--db', db, 'workflow', 'create', '--title', 'E2E Plan')
+        assert r.returncode == 0  # → E2E-W001
+
         # Create Epic
-        r = cli('--db', db, 'epic', 'create', '--title', 'Core Feature')
+        r = cli('--db', db, 'epic', 'create', '--workflow', 'E2E-W001', '--title', 'Core Feature')
         assert r.returncode == 0
 
         # Create Tasks under Epic
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-E001', '--title', 'Design API')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-W001', '--parent', 'E2E-E001', '--title', 'Design API')
         assert r.returncode == 0
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-E001', '--title', 'Implement API')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-W001', '--parent', 'E2E-E001', '--title', 'Implement API')
         assert r.returncode == 0
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-E001', '--title', 'Write Tests')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-W001', '--parent', 'E2E-E001', '--title', 'Write Tests')
         assert r.returncode == 0
 
         # Create SubTask under Task
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-T002', '--title', 'JWT Auth')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-W001', '--parent', 'E2E-T002', '--title', 'JWT Auth')
         assert r.returncode == 0
 
         # Create Objective
-        r = cli('--db', db, 'objective', 'create', '--title', 'MVP Done', '--milestone', 'Core features complete')
+        r = cli('--db', db, 'objective', 'create', '--workflow', 'E2E-W001', '--title', 'MVP Done', '--milestone', 'Core features complete')
         assert r.returncode == 0
 
         # --- Phase 3: Workflow Setup ---
