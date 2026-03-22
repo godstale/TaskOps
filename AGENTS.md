@@ -5,8 +5,8 @@ TaskOps is a skill for AI Agents (Claude Code, Gemini CLI) that manages complex 
 ## Project Status
 
 - Phase: Released (v0.2.5)
-- DB schema: `docs/DB_SCHEMA.md`
-- Skill documents: `skills/taskops.md` (Claude Code), `skills/taskops-gemini.md` (Gemini CLI)
+- DB schema: `cli/db/schema.py`
+- Skill documents: `SKILL.md`
 - Readme: `README.md`
 
 ## Architecture
@@ -21,7 +21,6 @@ TaskOps is a skill for AI Agents (Claude Code, Gemini CLI) that manages complex 
 ```
 skills/               # Skill documents (Agent reads these)
   taskops.md          # Claude Code skill
-  taskops-gemini.md   # Gemini CLI skill
   fragments/          # Shared instruction fragments
 cli/                  # Python CLI tool
   taskops.py          # Entry point (argparse-based)
@@ -29,9 +28,6 @@ cli/                  # Python CLI tool
   commands/           # Subcommand modules
   templates/          # MD file templates
 hooks/                # Claude Code hooks
-docs/                 # Documentation
-  plan/               # Business logic & implementation plan
-  design/             # Design documents
 ```
 
 ## Task ID System
@@ -42,6 +38,6 @@ docs/                 # Documentation
 
 ## Commands
 
-All DB operations go through: `python -m cli [--db <path>] <command> <subcommand> [options]`
+All DB operations go through: `python cli/taskops.py <command> <subcommand> [options]`
 
 Commands: `init`, `epic`, `task`, `objective`, `workflow`, `op`, `resource`, `query`, `setting`

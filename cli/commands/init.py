@@ -59,3 +59,7 @@ def handle(args):
     print(f"Project '{args.name}' initialized.")
     print(f"  Prefix:  {args.prefix}")
     print(f"  DB:      {db_path}")
+    print()
+    print("Next step: create or select a workflow (all ETS must belong to a workflow).")
+    print(f"  List existing:  python -m cli workflow list")
+    print(f"  Create new:     python -m cli workflow create --title \"<Workflow Title>\"")
