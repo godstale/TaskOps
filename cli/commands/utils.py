@@ -6,11 +6,14 @@ from ..db.connection import get_connection, close_connection
 
 
 def resolve_db_path(args):
-    """Resolve DB path from --db flag or default location.
-    --db 플래그 또는 기본 위치에서 DB 경로를 결정.
+    """Resolve DB path from --db flag, TASKOPS_DB env var, or cwd search.
+    --db 플래그, TASKOPS_DB 환경변수, 또는 현재 디렉토리 탐색으로 DB 경로 결정.
     """
     if hasattr(args, 'db') and args.db:
         return args.db
+    env_db = os.environ.get('TASKOPS_DB')
+    if env_db:
+        return env_db
     # Search for taskops.db in current directory and parents
     cwd = os.getcwd()
     path = cwd

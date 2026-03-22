@@ -8,7 +8,19 @@
 
 ## Agent Rules
 
-### 1. Operation Recording
+### 1. Workflow ID — Always Required
+
+**Every task, epic, and objective must have a `workflow_id`.** Items without one are invisible in TaskBoard and cannot be filtered per workflow.
+
+| How tasks are created | workflow_id handling |
+|----------------------|---------------------|
+| `workflow import` | ✅ Set automatically |
+| `epic/task/objective create` | ⚠️ Must pass `--workflow <W-ID>` explicitly |
+| `plan update` | ⚠️ Must pass `--workflow <W-ID>` explicitly |
+| `op start/progress/complete/error/interrupt` | ✅ Auto-resolved from task's workflow_id |
+| `resource add` | ✅ Auto-resolved from task's workflow_id |
+
+### 2. Operation Recording
 
 | Event | Command |
 |-------|---------|
@@ -18,14 +30,31 @@
 | Error | `op error <T-ID> --summary "..."` |
 | Blocked | `op interrupt <T-ID> --summary "..."` |
 
+`op` commands automatically inherit `workflow_id` from the task — no `--workflow` flag needed.
+
 Call `op progress` after: implementing a component, creating/modifying a key file, writing/passing tests, resolving a bug, or switching tasks.
 
-### 2. Resource Registration
+### 3. Resource Registration (Hard Gate — Required Before Done)
 
-Register every file created/modified before marking a task done:
+**⛔ Do NOT mark a task done until all artifacts are registered and verified.**
 
+**Step 1 — Register every file produced** (final outputs AND intermediate files):
 ```bash
-python -m cli --db taskops.db resource add <T-ID> --path <path> --type <input|output|intermediate|reference> --desc "..."
+python -m cli --db taskops.db resource add <T-ID> --path <path> --type <output|intermediate|input|reference> --desc "..."
+```
+
+`resource add` inherits `workflow_id` from the task automatically.
+
+**Step 2 — Verify registration before marking done:**
+```bash
+python -m cli --db taskops.db resource list --task <T-ID>
+```
+
+> If the list is empty or any expected file is missing → go back to Step 1.
+
+**Step 3 — Only then mark done:**
+```bash
+python -m cli --db taskops.db task update <T-ID> --status done
 ```
 
 ---
@@ -37,40 +66,41 @@ python -m cli --db taskops.db resource add <T-ID> --path <path> --type <input|ou
 ### workflow
 ```
 create --title "..." [--source-file <path>]
-list | show | delete <W-ID>
+list | show [--workflow <W-ID>] | delete <W-ID>
 import <W-ID> --structure '<json>' | --structure-file <path>
 restart <W-ID> [--clear-ops]
 set-order <T-ID> ... | set-parallel --group <name> <T-ID> ... | add-dep <T-ID> --depends-on <T-ID>
-next | current
+next [--workflow <W-ID>] | current [--workflow <W-ID>]
 ```
 
 ### epic / task
 ```
-epic create --title "..." | list | show <E-ID> | update <E-ID> --status <status> | delete <E-ID>
-task create --parent <E-ID|T-ID> --title "..."
-task list [--epic <E-ID>] [--status <status>] | show <T-ID>
+epic create --title "..." --workflow <W-ID>
+epic list [--workflow <W-ID>] | show <E-ID> | update <E-ID> --status <status> | delete <E-ID>
+task create --parent <E-ID|T-ID> --title "..." --workflow <W-ID>
+task list [--epic <E-ID>] [--status <status>] [--workflow <W-ID>] | show <T-ID>
 task update <T-ID> --status <todo|in_progress|interrupted|done|cancelled> [--interrupt "reason"]
 task delete <T-ID>
 ```
 
 ### plan
 ```
-plan update --changes '{"create":[...],"update":[...],"delete":[...]}' [--workflow <W-ID>]
+plan update --changes '{"create":[...],"update":[...],"delete":[...]}' --workflow <W-ID>
 ```
 
 ### op / resource / query
 ```
-op start|progress|complete|error|interrupt <T-ID> --summary "..." [--platform ...]
-op log [--task <T-ID>]
-resource add <T-ID> --path <path> --type <type> --desc "..."
-resource list --task <T-ID> | --workflow <W-ID> [--type <type>]
-query show [--workflow <W-ID>] | status | tasks [--status <status>]
+op start|progress|complete|error|interrupt <T-ID> --summary "..." [--platform ...]  # workflow_id auto-resolved
+op log [--task <T-ID>] [--workflow <W-ID>]
+resource add <T-ID> --path <path> --type <type> --desc "..."  # workflow_id auto-resolved
+resource list [--task <T-ID>] [--workflow <W-ID>] [--type <type>]
+query show [--workflow <W-ID>] | status [--workflow <W-ID>] | tasks [--status <status>] [--workflow <W-ID>]
 ```
 
 ### objective / setting / project
 ```
-objective create --title "..." --milestone "..." | --due-date YYYY-MM-DD
-objective list | update <O-ID> --status done
+objective create --title "..." [--milestone "..."] [--due-date YYYY-MM-DD] [--workflow <W-ID>]
+objective list [--workflow <W-ID>] | update <O-ID> --status done
 setting set <key> <value> | get <key> | list | delete <key>
 project checkpoint [--note "..."] | checkpoint list | rollback --checkpoint <id> | restart [--clear-ops]
 ```

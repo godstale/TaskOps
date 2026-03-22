@@ -25,12 +25,15 @@ def register(subparsers):
     add_dep.set_defaults(func=handle_add_dep)
 
     show = sub.add_parser('show', help='Show workflow')
+    show.add_argument('--workflow', default=None, help='Filter by workflow ID')
     show.set_defaults(func=handle_show)
 
     nxt = sub.add_parser('next', help='Show next executable tasks')
+    nxt.add_argument('--workflow', default=None, help='Filter by workflow ID')
     nxt.set_defaults(func=handle_next)
 
     current = sub.add_parser('current', help='Show currently active task')
+    current.add_argument('--workflow', default=None, help='Filter by workflow ID')
     current.set_defaults(func=handle_current)
 
     create = sub.add_parser('create', help='Create a new workflow')
@@ -133,11 +136,15 @@ def handle_add_dep(args):
 def handle_show(args):
     conn = get_db(args)
     try:
-        rows = conn.execute(
-            "SELECT id, title, status, seq_order, parallel_group, depends_on "
-            "FROM tasks WHERE type='task' AND seq_order IS NOT NULL "
-            "ORDER BY seq_order, id"
-        ).fetchall()
+        query = ("SELECT id, title, status, seq_order, parallel_group, depends_on "
+                 "FROM tasks WHERE type='task' AND seq_order IS NOT NULL")
+        params = []
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
+        query += " ORDER BY seq_order, id"
+        rows = conn.execute(query, params).fetchall()
 
         if not rows:
             print("No workflow defined. Use 'workflow set-order' to define execution order.")
@@ -181,11 +188,15 @@ def _deps_satisfied(conn, depends_on_json):
 def handle_next(args):
     conn = get_db(args)
     try:
-        rows = conn.execute(
-            "SELECT id, title, seq_order, parallel_group, depends_on FROM tasks "
-            "WHERE status = 'todo' AND type = 'task' "
-            "ORDER BY seq_order ASC, id ASC"
-        ).fetchall()
+        query = ("SELECT id, title, seq_order, parallel_group, depends_on FROM tasks "
+                 "WHERE status = 'todo' AND type = 'task'")
+        params = []
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
+        query += " ORDER BY seq_order ASC, id ASC"
+        rows = conn.execute(query, params).fetchall()
 
         executable = []
         for row in rows:
@@ -207,10 +218,14 @@ def handle_next(args):
 def handle_current(args):
     conn = get_db(args)
     try:
-        row = conn.execute(
-            "SELECT id FROM tasks WHERE status='in_progress' AND type='task' "
-            "ORDER BY seq_order, id LIMIT 1"
-        ).fetchone()
+        query = "SELECT id FROM tasks WHERE status='in_progress' AND type='task'"
+        params = []
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
+        query += " ORDER BY seq_order, id LIMIT 1"
+        row = conn.execute(query, params).fetchone()
         if row is None:
             # No output for scripting use (hooks)
             return
@@ -362,7 +377,7 @@ def handle_import(args):
                     )
                     output_lines.append(f"      [resource] {res_data['path']} ({res_data.get('type', 'reference')})")
 
-                for st_data in task_data.get('subtasks', []):
+                for st_data in task_data.get('tasks', task_data.get('subtasks', [])):
                     st_id = next_id(conn, project_id, 'T')
                     conn.execute(
                         "INSERT INTO tasks "

@@ -47,6 +47,7 @@ CREATE TABLE IF NOT EXISTS operations (
     operation_type  TEXT NOT NULL
                     CHECK(operation_type IN ('start','progress','complete','error','interrupt')),
     agent_platform  TEXT,
+    workflow_id     TEXT,                      -- references workflows(id), nullable (v3+)
     summary         TEXT,
     details         TEXT,
     subagent_used   INTEGER DEFAULT 0,
@@ -125,6 +126,7 @@ SQL_MIGRATE_V2_TO_V3 = [
         "created_at TEXT NOT NULL DEFAULT (datetime('now')));"
     ),
     "ALTER TABLE tasks ADD COLUMN workflow_id TEXT;",
+    "ALTER TABLE operations ADD COLUMN workflow_id TEXT;",
     "CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);",
 ]
 
@@ -158,11 +160,16 @@ def migrate_schema(conn):
         existing_tables = {r[0] for r in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()}
-        existing_cols = {r[1] for r in conn.execute(
+        tasks_cols = {r[1] for r in conn.execute(
             "PRAGMA table_info(tasks)"
         ).fetchall()}
+        ops_cols = {r[1] for r in conn.execute(
+            "PRAGMA table_info(operations)"
+        ).fetchall()}
         for stmt in SQL_MIGRATE_V2_TO_V3:
-            if 'ALTER TABLE tasks ADD COLUMN workflow_id' in stmt and 'workflow_id' in existing_cols:
+            if 'ALTER TABLE tasks ADD COLUMN workflow_id' in stmt and 'workflow_id' in tasks_cols:
+                continue
+            if 'ALTER TABLE operations ADD COLUMN workflow_id' in stmt and 'workflow_id' in ops_cols:
                 continue
             if 'CREATE TABLE IF NOT EXISTS workflows' in stmt and 'workflows' in existing_tables:
                 continue

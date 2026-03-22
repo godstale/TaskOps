@@ -15,12 +15,14 @@ def register(subparsers):
     create.add_argument('--title', required=True, help='Task title')
     create.add_argument('--description', default='', help='Task description')
     create.add_argument('--todo', default='', help='Todo checklist (markdown)')
+    create.add_argument('--workflow', default=None, help='Workflow ID to associate with')
     create.set_defaults(func=handle_create)
 
     lst = sub.add_parser('list', help='List tasks')
     lst.add_argument('--epic', help='Filter by epic ID')
     lst.add_argument('--parent', help='Filter by parent ID')
     lst.add_argument('--status', help='Filter by status')
+    lst.add_argument('--workflow', default=None, help='Filter by workflow ID')
     lst.set_defaults(func=handle_list)
 
     show = sub.add_parser('show', help='Show task details')
@@ -61,10 +63,11 @@ def handle_create(args):
 
         task_id = next_id(conn, project_id, 'T')
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        workflow_id = getattr(args, 'workflow', None)
         conn.execute(
-            "INSERT INTO tasks (id, project_id, type, title, description, status, parent_id, todo, created_at, updated_at) "
-            "VALUES (?, ?, 'task', ?, ?, 'todo', ?, ?, ?, ?)",
-            (task_id, project_id, args.title, args.description, args.parent, args.todo, now, now)
+            "INSERT INTO tasks (id, project_id, type, title, description, status, parent_id, workflow_id, todo, created_at, updated_at) "
+            "VALUES (?, ?, 'task', ?, ?, 'todo', ?, ?, ?, ?, ?)",
+            (task_id, project_id, args.title, args.description, args.parent, workflow_id, args.todo, now, now)
         )
         conn.commit()
 
@@ -89,6 +92,10 @@ def handle_list(args):
         if args.status:
             query += " AND status=?"
             params.append(args.status)
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
 
         query += " ORDER BY seq_order, id"
         rows = conn.execute(query, params).fetchall()
@@ -121,6 +128,7 @@ def handle_show(args):
         print(f"  Title: {row['title']}")
         print(f"  Status: {row['status']}")
         print(f"  Parent: {row['parent_id']}")
+        print(f"  Workflow: {row['workflow_id'] or '(none)'}")
         print(f"  Description: {row['description'] or '(none)'}")
         if row['todo']:
             print(f"  Todo:\n    {row['todo']}")

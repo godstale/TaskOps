@@ -2,6 +2,17 @@
 # Hook: Called after tool use (Edit, Write, Bash)
 # TaskOps Hook: 도구 사용 후 진행 상황 기록
 # Triggered by PostToolUse hook in Claude Code
+#
+# Safety: Only fires when TaskOps is the active tracking system.
+# Set TASKOPS_ACTIVE=1 when TaskOps is chosen at the Planning Gate.
+# This prevents conflicts with other execution tracking skills
+# (e.g., executing-plans, subagent-driven-development) that use
+# TodoWrite-based tracking.
+
+# Guard: skip if TaskOps is not the active tracking system
+if [ "${TASKOPS_ACTIVE}" != "1" ]; then
+    exit 0
+fi
 
 TASKOPS_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if command -v cygpath &>/dev/null; then

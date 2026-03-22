@@ -14,9 +14,11 @@ def register(subparsers):
     create.add_argument('--title', required=True, help='Objective title')
     create.add_argument('--milestone', help='Milestone target description')
     create.add_argument('--due-date', help='Due date (YYYY-MM-DD)')
+    create.add_argument('--workflow', default=None, help='Workflow ID to associate with')
     create.set_defaults(func=handle_create)
 
     lst = sub.add_parser('list', help='List all objectives')
+    lst.add_argument('--workflow', default=None, help='Filter by workflow ID')
     lst.set_defaults(func=handle_list)
 
     update = sub.add_parser('update', help='Update an objective')
@@ -44,12 +46,13 @@ def handle_create(args):
         milestone = getattr(args, 'milestone', None)
         due_date = getattr(args, 'due_date', None)
 
+        workflow_id = getattr(args, 'workflow', None)
         conn.execute(
             "INSERT INTO tasks (id, project_id, type, title, status, parent_id, "
-            "milestone_target, due_date, created_at, updated_at) "
-            "VALUES (?, ?, 'objective', ?, 'todo', ?, ?, ?, ?, ?)",
+            "milestone_target, due_date, workflow_id, created_at, updated_at) "
+            "VALUES (?, ?, 'objective', ?, 'todo', ?, ?, ?, ?, ?, ?)",
             (obj_id, project_id, args.title, project_id,
-             milestone, due_date, now, now)
+             milestone, due_date, workflow_id, now, now)
         )
         conn.commit()
 
@@ -66,10 +69,14 @@ def handle_create(args):
 def handle_list(args):
     conn = get_db(args)
     try:
-        rows = conn.execute(
-            "SELECT id, title, status, milestone_target, due_date "
-            "FROM tasks WHERE type='objective' ORDER BY due_date, id"
-        ).fetchall()
+        query = "SELECT id, title, status, milestone_target, due_date FROM tasks WHERE type='objective'"
+        params = []
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
+        query += " ORDER BY due_date, id"
+        rows = conn.execute(query, params).fetchall()
         if not rows:
             print("No objectives found.")
             return

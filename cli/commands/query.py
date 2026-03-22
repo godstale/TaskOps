@@ -12,10 +12,12 @@ def register(subparsers):
     sub = parser.add_subparsers(dest='subcommand')
 
     status = sub.add_parser('status', help='Show project status summary')
+    status.add_argument('--workflow', default=None, help='Filter by workflow ID')
     status.set_defaults(func=handle_status)
 
     tasks = sub.add_parser('tasks', help='List tasks by filter')
     tasks.add_argument('--status', help='Filter by status')
+    tasks.add_argument('--workflow', default=None, help='Filter by workflow ID')
     tasks.set_defaults(func=handle_tasks)
 
     show = sub.add_parser('show', help='Print task structure to stdout')
@@ -35,20 +37,28 @@ def handle_status(args):
             print("No project found.")
             return
 
+        workflow_filter = getattr(args, 'workflow', None)
+        wf_clause = ""
+        wf_params = []
+        if workflow_filter:
+            wf_clause = " AND workflow_id=?"
+            wf_params = [workflow_filter]
+
         # Count by type
         epic_count = conn.execute(
-            "SELECT COUNT(*) as c FROM tasks WHERE type='epic'"
+            f"SELECT COUNT(*) as c FROM tasks WHERE type='epic'{wf_clause}", wf_params
         ).fetchone()['c']
         task_count = conn.execute(
-            "SELECT COUNT(*) as c FROM tasks WHERE type='task'"
+            f"SELECT COUNT(*) as c FROM tasks WHERE type='task'{wf_clause}", wf_params
         ).fetchone()['c']
         obj_count = conn.execute(
-            "SELECT COUNT(*) as c FROM tasks WHERE type='objective'"
+            f"SELECT COUNT(*) as c FROM tasks WHERE type='objective'{wf_clause}", wf_params
         ).fetchone()['c']
 
         # Count by status (tasks only)
         statuses = conn.execute(
-            "SELECT status, COUNT(*) as c FROM tasks WHERE type='task' GROUP BY status"
+            f"SELECT status, COUNT(*) as c FROM tasks WHERE type='task'{wf_clause} GROUP BY status",
+            wf_params
         ).fetchall()
         status_map = {row['status']: row['c'] for row in statuses}
 
@@ -56,7 +66,10 @@ def handle_status(args):
         total = task_count
         pct = (done / total * 100) if total > 0 else 0
 
-        print(f"Project: {project['title']} ({project['id']})")
+        header = f"Project: {project['title']} ({project['id']})"
+        if workflow_filter:
+            header += f" [workflow: {workflow_filter}]"
+        print(header)
         print(f"  Epics: {epic_count}")
         print(f"  Tasks: {task_count}")
         print(f"  Objectives: {obj_count}")
@@ -78,6 +91,10 @@ def handle_tasks(args):
         if args.status:
             query += " AND status=?"
             params.append(args.status)
+        workflow_filter = getattr(args, 'workflow', None)
+        if workflow_filter:
+            query += " AND workflow_id=?"
+            params.append(workflow_filter)
         query += " ORDER BY seq_order, id"
 
         rows = conn.execute(query, params).fetchall()

@@ -28,9 +28,12 @@ def register(subparsers):
 
 
 def handle(args):
-    # --db flag takes precedence: derive project_path from the DB path
+    # Priority: --db flag > TASKOPS_DB env var > --path argument
     if hasattr(args, 'db') and args.db:
         db_path = os.path.abspath(args.db)
+        project_path = os.path.dirname(db_path)
+    elif os.environ.get('TASKOPS_DB'):
+        db_path = os.path.abspath(os.environ['TASKOPS_DB'])
         project_path = os.path.dirname(db_path)
     else:
         project_path = os.path.abspath(args.path)

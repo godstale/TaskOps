@@ -16,6 +16,7 @@ def register(subparsers):
     add.add_argument('--type', choices=['input', 'output', 'reference', 'intermediate'],
                      default='reference', dest='res_type', help='Resource type')
     add.add_argument('--desc', default='', help='Description')
+    add.add_argument('--workflow', default=None, help='Workflow ID (auto-resolved from task if omitted)')
     add.set_defaults(func=handle_add)
 
     lst = sub.add_parser('list', help='List resources')
@@ -30,16 +31,17 @@ def register(subparsers):
 def handle_add(args):
     conn = get_db(args)
     try:
-        row = conn.execute("SELECT id FROM tasks WHERE id=?", (args.task_id,)).fetchone()
+        row = conn.execute("SELECT id, workflow_id FROM tasks WHERE id=?", (args.task_id,)).fetchone()
         if row is None:
             print(f"Task not found: {args.task_id}")
             raise SystemExit(1)
 
+        workflow_id = getattr(args, 'workflow', None) or row['workflow_id']
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
-            "INSERT INTO resources (task_id, file_path, description, res_type, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (args.task_id, args.path, args.desc, args.res_type, now)
+            "INSERT INTO resources (task_id, file_path, description, res_type, workflow_id, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (args.task_id, args.path, args.desc, args.res_type, workflow_id, now)
         )
         conn.commit()
         print(f"Resource added: {args.path} ({args.res_type}) -> {args.task_id}")
@@ -58,8 +60,7 @@ def handle_list(args):
         params = []
 
         if args.workflow:
-            query += " JOIN tasks t ON r.task_id = t.id"
-            conditions.append("t.workflow_id=?")
+            conditions.append("r.workflow_id=?")
             params.append(args.workflow)
         if args.task:
             conditions.append("r.task_id=?")
