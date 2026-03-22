@@ -4,7 +4,7 @@ TaskOps CLI 진입점. argparse 기반 서브커맨드 라우팅.
 import argparse
 import sys
 
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 
 
 def build_parser():
