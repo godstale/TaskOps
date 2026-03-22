@@ -132,6 +132,34 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 - `init` generates `TASKOPS.md` only; removed auto-generation of `AGENTS.md`, `SETTINGS.md`, and resource files
 - Skill docs updated for v0.2.5: workflow import flow, `query show` usage, and scope rules
 
+## [0.2.6] - 2026-03-22
+
+### Added
+
+- `workflow export <W-ID>` — generate a TODO.md snapshot of all tasks in a workflow to stdout
+- `workflow create --description` — optional description field when creating a workflow
+- `skills/fragments/planning-guide.md` — TaskOps-native planning guide (replaces `writing-plans` skill dependency)
+- `skills/fragments/execution-guide.md` — TaskOps-native execution guide (replaces `executing-plans` skill dependency)
+- `skills/fragments/setting-guide.md` — workflow dependency management reference
+- DB schema v6 — `description` column on `workflows` table
+- Workflow-scoped short ID prefix: epics, tasks, objectives, and plan imports now use the workflow prefix (e.g., `TW-E001`, `TW-T001`)
+- `generate_workflow_short` / `get_workflow_prefix` utilities; `next_workflow_id` derives short prefix from workflow title
+- Design docs: `docs/design/` workflow-first architecture spec and implementation plan
+
+### Changed
+
+- **DB-only principle**: `init` no longer generates `TASKOPS.md`; `setting` no longer generates `SETTINGS.md` — all state lives in the DB
+- `skills/taskops.md` restructured to v0.2.6 slim + fragment-based layout; planning and execution guides are now self-contained fragments instead of delegating to external skills
+- `SKILL.md`, `skills/taskops-gemini.md` updated to match v0.2.6 structure
+
+### Fixed
+
+- `workflow list` output now uses ASCII dash (`-`) instead of Unicode em-dash to avoid Windows cp949 encoding errors
+
+### Removed
+
+- `TASKOPS.md.tmpl` — no longer needed after DB-only principle adoption
+
 ## [Unreleased]
 
 - TBD
