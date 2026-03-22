@@ -14,6 +14,18 @@ If the spec covers 2+ independent subsystems that could be completed separately:
 
 If all work is one cohesive feature → single workflow.
 
+## Step 2.5: Duplicate Workflow Pre-Check
+
+Before creating a new workflow, **always** check for existing ones:
+
+```bash
+python -m cli workflow list
+```
+
+Read each workflow's title and description:
+- If a workflow with the same or very similar scope exists → resume it (`workflow restart`) instead of creating a new one
+- If no matching workflow found → proceed to create a new one
+
 ## Step 3: ETS Structure Design
 
 Design before converting to JSON:
@@ -44,13 +56,19 @@ export TASKOPS_ACTIVE=1
 # 2. Initialize (creates taskops.db only)
 python -m cli init --name "Project Name" --prefix PRJ
 
-# 3. Create workflow (the plan container)
-python -m cli workflow create --title "Plan Title"
-# → Note the workflow ID: PRJ-W001
+# 3. Check for existing workflows (duplicate detection — always run this first)
+python -m cli workflow list
+#    If a similar workflow exists → resume it; otherwise create new:
+python -m cli workflow create \
+  --title "Plan Title" \
+  --description "Detailed scope: what will be built, what modules affected, key constraints."
+# → Note the workflow ID: PRJ-PT
 
 # 4. Import full ETS structure in one call
-python -m cli workflow import PRJ-W001 --structure '<json>'
+python -m cli workflow import PRJ-PT --structure '<json>'
 ```
+
+> ⚠️ **workflow_id is required for all ETS.** After `init`, you MUST either select an existing workflow or create a new one before creating any Epics, Tasks, or Objectives. All create commands (`epic create`, `task create`, `objective create`) require `--workflow <W-ID>`. Workflow IDs use a title-derived short string (e.g., `PRJ-PT` for "Plan Title").
 
 JSON format:
 ```json
@@ -76,11 +94,21 @@ JSON format:
 
 ## Step 5: Configure Settings (Dependencies)
 
-Before execution, register any required tools, services, or APIs as settings:
+Before execution, register any required tools, services, or APIs as settings.
+**Always specify `--workflow` so settings are scoped to this plan:**
 
 ```bash
-python -m cli setting set docker_required true --desc "Docker CLI needed for build tasks"
-python -m cli setting set openai_api_configured false --desc "Needs API key before Task T003"
+# Per-workflow settings (recommended)
+python -m cli setting set docker_required true --workflow PRJ-PT --desc "Docker CLI needed for build tasks"
+python -m cli setting set openai_api_configured false --workflow PRJ-PT --desc "Needs API key before Task T003"
+
+# Global settings (shared across all workflows)
+python -m cli setting set project_language python --desc "Primary language"
+```
+
+Verify:
+```bash
+python -m cli setting list --workflow PRJ-PT
 ```
 
 See `@skills/fragments/setting-guide.md` for full setting reference.
@@ -88,7 +116,7 @@ See `@skills/fragments/setting-guide.md` for full setting reference.
 ## Step 6: Verify and Show Plan
 
 ```bash
-python -m cli query show --workflow PRJ-W001
+python -m cli query show --workflow PRJ-PT
 python -m cli setting list
 ```
 
@@ -109,5 +137,5 @@ After plan is verified, ALWAYS ask before proceeding to execution:
 If the user wants a file snapshot of the plan at any time:
 
 ```bash
-python -m cli workflow export PRJ-W001 [--output TODO.md]
+python -m cli workflow export PRJ-PT [--output TODO.md]
 ```

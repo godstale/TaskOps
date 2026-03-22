@@ -61,10 +61,10 @@ Exception: `workflow export` may create a TODO.md file **only when the user expl
 When user asks to "reset" or "start over", always ask which type:
 
 > **Option 1 — 상태만 초기화 (Keep plan, reset status)**
-> `python -m cli workflow restart {PREFIX}-W001`
+> `python -m cli workflow restart {PREFIX}-{SHORT}`
 >
 > **Option 2 — 계획부터 다시 시작 (Delete plan, re-plan)**
-> `python -m cli workflow delete {PREFIX}-W001` → re-run planning phase
+> `python -m cli workflow delete {PREFIX}-{SHORT}` → re-run planning phase
 
 ⚠️ Neither option touches project source files.
 
@@ -84,12 +84,19 @@ export TASKOPS_ACTIVE=1
 # 2. Initialize project (creates taskops.db only)
 python -m cli init --name "Project Name" --prefix PRJ
 
-# 3. Create workflow (all tasks must belong to a workflow)
-python -m cli workflow create --title "My Plan"
-# → Workflow ID: PRJ-W001
+# 3. Select or create a workflow — ALL ETS require a workflow_id
+#    List existing (resume scenario):
+python -m cli workflow list
+#    Check for existing workflows first (duplicate detection):
+python -m cli workflow list
+#    Create new (always include --description):
+python -m cli workflow create \
+  --title "My Plan" \
+  --description "Brief description of scope and intent"
+# → Workflow ID: PRJ-MP
 ```
 
-> Step 3 is required. Tasks without a `workflow_id` are invisible in TaskBoard and cannot be workflow-filtered.
+> ⚠️ Step 3 is mandatory. All Epics, Tasks, and Objectives must belong to a workflow. The `epic create`, `task create`, and `objective create` commands require `--workflow <W-ID>`.
 
 Hook configuration (optional):
 ```json
@@ -134,10 +141,21 @@ After plan import, ALWAYS ask before starting execution:
 Follow `@skills/fragments/execution-guide.md` for full execution instructions.
 
 **Required op recording sequence for every task:**
-1. `op start {T-ID}` → work → `op progress {T-ID}` (at milestones)
-2. `resource add {T-ID}` for every artifact (HARD GATE before done)
-3. `resource list --task {T-ID}` to verify (must be non-empty)
-4. `task update {T-ID} --status done` → `op complete {T-ID}`
+1. `op start {T-ID}` → set task status to `in_progress` → do the work → `op progress {T-ID}` (at milestones)
+2. ⛔ **RESOURCE GATE** — register EVERY output file before marking done:
+   ```bash
+   python -m cli resource add {T-ID} --path ./path/to/output.py --type output --desc "What this file is"
+   python -m cli resource list --task {T-ID}   # must show at least 1 entry
+   ```
+3. `task update {T-ID} --status done` → `op complete {T-ID} --summary "..."`
+4. Parent epic status is auto-updated (no manual `epic update` needed)
+
+**After ALL tasks in the workflow are done, submit a final report:**
+```bash
+python -m cli workflow report {PREFIX}-{SHORT} \
+  --summary "One-sentence summary of what was accomplished" \
+  --details "Full markdown report: what was built, key decisions, files created"
+```
 
 For operations recording detail, see `@skills/fragments/monitoring-guide.md`.
 
@@ -146,10 +164,10 @@ For operations recording detail, see `@skills/fragments/monitoring-guide.md`.
 ## Phase 4: Monitoring
 
 ```bash
-python -m cli query status --workflow {PREFIX}-W001
-python -m cli query show --workflow {PREFIX}-W001
-python -m cli op log --workflow {PREFIX}-W001
-python -m cli workflow next --workflow {PREFIX}-W001
+python -m cli query status --workflow {PREFIX}-{SHORT}
+python -m cli query show --workflow {PREFIX}-{SHORT}
+python -m cli op log --workflow {PREFIX}-{SHORT}
+python -m cli workflow next --workflow {PREFIX}-{SHORT}
 ```
 
 ---
@@ -167,7 +185,7 @@ python -m cli project checkpoint list
 python -m cli project rollback --checkpoint 2
 
 # Reset specific workflow tasks to todo
-python -m cli workflow restart {PREFIX}-W001
+python -m cli workflow restart {PREFIX}-{SHORT}
 
 # Reset ALL tasks to todo (project-wide)
 python -m cli project restart
@@ -187,10 +205,10 @@ export TASKOPS_ACTIVE=1
 python -m cli workflow list
 
 # Load task structure for a specific workflow
-python -m cli query show --workflow {PREFIX}-W001
+python -m cli query show --workflow {PREFIX}-{SHORT}
 
 # Find the next task
-python -m cli workflow next --workflow {PREFIX}-W001
+python -m cli workflow next --workflow {PREFIX}-{SHORT}
 ```
 
 ---
@@ -200,11 +218,12 @@ python -m cli workflow next --workflow {PREFIX}-W001
 | Command | Description |
 |---------|-------------|
 | `init --name --prefix [--path]` | Initialize project (creates taskops.db only) |
-| `workflow create --title` | Create a workflow (plan container) |
+| `workflow create --title --description` | Create a workflow; `--description` sets scope for duplicate detection |
 | `workflow list` | List all workflows |
 | `workflow import <W-ID> --structure '<json>'` | Import full ETS plan (required path) |
 | `workflow import <W-ID> --structure-file <path>` | Import from JSON file |
 | `workflow export <W-ID> [--output <path>]` | Export to TODO.md (default: next to DB) |
+| `workflow report <W-ID> --summary '...' [--details '...']` | Submit final completion report; marks workflow completed |
 | `workflow delete <W-ID>` | Delete workflow and all its tasks |
 | `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo |
 | `workflow show [--workflow <W-ID>]` | Show execution order |
@@ -213,15 +232,15 @@ python -m cli workflow next --workflow {PREFIX}-W001
 | `workflow set-order <T-ID>...` | Set sequential execution order |
 | `workflow set-parallel --group <name> <T-ID>...` | Group for parallel execution |
 | `workflow add-dep <T-ID> --depends-on <T-ID>...` | Add task dependency |
-| `epic create --title [--workflow <W-ID>]` | Create epic |
+| `epic create --title --workflow <W-ID>` | Create epic (workflow required) |
 | `epic list/show/update/delete` | Epic management |
-| `task create --parent --title [--workflow <W-ID>]` | Create task |
+| `task create --parent --title --workflow <W-ID>` | Create task (workflow required) |
 | `task list [--epic] [--status] [--workflow <W-ID>]` | List tasks |
 | `task show/update/delete` | Task management |
 | `task update <T-ID> --status <status>` | Status: todo\|in_progress\|interrupted\|done\|cancelled |
-| `objective create --title [--workflow <W-ID>]` | Create milestone marker |
+| `objective create --title --workflow <W-ID>` | Create milestone marker (workflow required) |
 | `objective list/update/delete` | Objective management |
-| `plan update --changes '<json>' [--workflow <W-ID>]` | Partial plan changes |
+| `plan update --changes '<json>' [--workflow <W-ID>]` | Partial plan changes (--workflow required if creates present) |
 | `op start/progress/complete/error/interrupt <T-ID>` | Record operation (workflow_id auto-resolved) |
 | `op log [--task <T-ID>] [--workflow <W-ID>]` | View operation history |
 | `resource add <T-ID> --path --type --desc` | Register artifact (workflow_id auto-resolved) |
@@ -229,7 +248,10 @@ python -m cli workflow next --workflow {PREFIX}-W001
 | `query show [--workflow <W-ID>]` | Full task tree view |
 | `query status [--workflow <W-ID>]` | Progress summary |
 | `query tasks [--status] [--workflow <W-ID>]` | Filtered task list |
-| `setting set/get/list/delete` | Dependency/configuration management |
+| `setting set <key> <val> [--workflow <W-ID>] [--desc '...']` | Set per-workflow or global setting |
+| `setting get <key> [--workflow <W-ID>]` | Get setting value |
+| `setting list [--workflow <W-ID>]` | List settings (all if --workflow omitted) |
+| `setting delete <key> [--workflow <W-ID>]` | Delete setting |
 | `project checkpoint [--note]` | Create status snapshot |
 | `project checkpoint list` | List snapshots |
 | `project rollback --checkpoint <id>` | Restore task statuses from snapshot |
@@ -240,7 +262,8 @@ python -m cli workflow next --workflow {PREFIX}-W001
 | How task is created | workflow_id |
 |---------------------|-------------|
 | `workflow import` | ✅ Set automatically |
-| `epic/task/objective create`, `plan update` | ⚠️ Pass `--workflow <W-ID>` explicitly |
+| `epic/task/objective create` | ❗ `--workflow <W-ID>` required |
+| `plan update` with creates | ❗ `--workflow <W-ID>` required (or per-item `workflow_id` in JSON) |
 | `op start/progress/complete/error/interrupt` | ✅ Auto-resolved from task |
 | `resource add` | ✅ Auto-resolved from task |
 
