@@ -32,7 +32,8 @@ def test_init_creates_required_files():
         proj_path = os.path.join(tmpdir, 'myproj')
         run_cli('init', '--name', 'MyProj', '--prefix', 'MYP', '--path', proj_path)
 
-        assert os.path.exists(os.path.join(proj_path, 'TASKOPS.md')), "TASKOPS.md not created"
+        assert os.path.exists(os.path.join(proj_path, 'taskops.db')), "taskops.db not created"
+        assert not os.path.exists(os.path.join(proj_path, 'TASKOPS.md')), "TASKOPS.md should not be created (DB-only)"
         assert not os.path.exists(os.path.join(proj_path, 'AGENTS.md')), "AGENTS.md should not be created"
         assert not os.path.exists(os.path.join(proj_path, 'SETTINGS.md')), "SETTINGS.md should not be created"
         assert not os.path.isdir(os.path.join(proj_path, 'resources')), "resources/ should not be created"
@@ -83,15 +84,21 @@ def test_init_project_record_in_db():
             conn.close()
 
 
-def test_init_taskops_md_contains_project_name():
+def test_init_db_contains_project_name():
+    """Project name stored in DB (not TASKOPS.md — DB-only principle)."""
     with tempfile.TemporaryDirectory() as tmpdir:
         proj_path = os.path.join(tmpdir, 'myproj')
         run_cli('init', '--name', 'TestProject', '--prefix', 'TST', '--path', proj_path)
 
-        taskops_path = os.path.join(proj_path, 'TASKOPS.md')
-        with open(taskops_path, encoding='utf-8') as f:
-            content = f.read()
-        assert 'TestProject' in content
+        import sqlite3 as _sqlite3
+        conn = _sqlite3.connect(os.path.join(proj_path, 'taskops.db'))
+        conn.row_factory = _sqlite3.Row
+        try:
+            row = conn.execute("SELECT title FROM tasks WHERE type='project'").fetchone()
+            assert row is not None
+            assert 'TestProject' in row['title']
+        finally:
+            conn.close()
 
 
 def test_init_idempotent():
