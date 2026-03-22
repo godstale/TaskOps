@@ -2,7 +2,7 @@
 Task/SubTask 관리 커맨드 (CRUD). Task와 SubTask는 동일 시퀀스 사용.
 """
 from datetime import datetime
-from .utils import get_db, get_project_id, next_id
+from .utils import get_db, get_project_id, next_id, get_workflow_prefix
 from ..db.connection import close_connection
 
 
@@ -15,7 +15,7 @@ def register(subparsers):
     create.add_argument('--title', required=True, help='Task title')
     create.add_argument('--description', default='', help='Task description')
     create.add_argument('--todo', default='', help='Todo checklist (markdown)')
-    create.add_argument('--workflow', default=None, help='Workflow ID to associate with')
+    create.add_argument('--workflow', required=True, help='Workflow ID to associate with')
     create.set_defaults(func=handle_create)
 
     lst = sub.add_parser('list', help='List tasks')
@@ -49,6 +49,7 @@ def handle_create(args):
     conn = get_db(args)
     try:
         project_id = get_project_id(conn)
+        wf_short = get_workflow_prefix(args.workflow)
 
         # Validate parent exists
         parent = conn.execute(
@@ -61,9 +62,9 @@ def handle_create(args):
             print(f"Invalid parent type: {parent['type']}. Parent must be an epic or task.")
             raise SystemExit(1)
 
-        task_id = next_id(conn, project_id, 'T')
+        task_id = next_id(conn, wf_short, 'T')
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
-        workflow_id = getattr(args, 'workflow', None)
+        workflow_id = args.workflow
         conn.execute(
             "INSERT INTO tasks (id, project_id, type, title, description, status, parent_id, workflow_id, todo, created_at, updated_at) "
             "VALUES (?, ?, 'task', ?, ?, 'todo', ?, ?, ?, ?, ?)",
@@ -151,6 +152,64 @@ def handle_show(args):
         close_connection(conn)
 
 
+def _sync_epic_status(conn, task_id):
+    """After a task status change, propagate the aggregate status to the parent epic."""
+    task_row = conn.execute(
+        "SELECT parent_id FROM tasks WHERE id=?", (task_id,)
+    ).fetchone()
+    if not task_row or not task_row['parent_id']:
+        return
+    parent_id = task_row['parent_id']
+    parent = conn.execute(
+        "SELECT id, type FROM tasks WHERE id=?", (parent_id,)
+    ).fetchone()
+    if not parent:
+        return
+
+    if parent['type'] == 'epic':
+        epic_id = parent['id']
+    elif parent['type'] == 'task':
+        # Subtask scenario: walk up to find the epic
+        gp_row = conn.execute(
+            "SELECT parent_id FROM tasks WHERE id=?", (parent_id,)
+        ).fetchone()
+        if not gp_row or not gp_row['parent_id']:
+            return
+        gp = conn.execute(
+            "SELECT id, type FROM tasks WHERE id=? AND type='epic'", (gp_row['parent_id'],)
+        ).fetchone()
+        if not gp:
+            return
+        epic_id = gp['id']
+    else:
+        return
+
+    children = conn.execute(
+        "SELECT status FROM tasks WHERE parent_id=? AND type='task'", (epic_id,)
+    ).fetchall()
+
+    if not children:
+        return
+
+    statuses = [r['status'] for r in children]
+    all_finished = all(s in ('done', 'cancelled') for s in statuses)
+    any_done = any(s == 'done' for s in statuses)
+    any_active = any(s in ('done', 'in_progress') for s in statuses)
+
+    if all_finished and any_done:
+        new_status = 'done'
+    elif any_active:
+        new_status = 'in_progress'
+    else:
+        new_status = 'todo'
+
+    now = datetime.now().isoformat(sep=' ', timespec='seconds')
+    conn.execute(
+        "UPDATE tasks SET status=?, updated_at=? WHERE id=? AND type='epic'",
+        (new_status, now, epic_id)
+    )
+
+
 def handle_update(args):
     conn = get_db(args)
     try:
@@ -187,6 +246,11 @@ def handle_update(args):
         params.append(args.id)
 
         conn.execute(f"UPDATE tasks SET {', '.join(updates)} WHERE id=?", params)
+
+        # Auto-sync parent epic status when task status changes
+        if args.status:
+            _sync_epic_status(conn, args.id)
+
         conn.commit()
         print(f"Updated task: {args.id}")
     finally:

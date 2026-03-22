@@ -73,11 +73,12 @@ def setup_project_with_tasks(tmpdir):
     pp = os.path.join(tmpdir, 'test-proj')
     run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
     db = os.path.join(pp, 'taskops.db')
-    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A', '--workflow', 'TST-W001')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 1', '--workflow', 'TST-W001')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 2', '--workflow', 'TST-W001')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 3', '--workflow', 'TST-W001')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow',
+            '--description', 'Test workflow for unit tests')
+    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A', '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 1', '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 2', '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 3', '--workflow', 'TST-TW')
     return pp, db
 
 
@@ -85,17 +86,17 @@ def test_workflow_set_order():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
         result = run_cli('--db', db, 'workflow', 'set-order',
-                         'TST-T001', 'TST-T002', 'TST-T003')
+                         'TW-T001', 'TW-T002', 'TW-T003')
         assert result.returncode == 0
-        assert '1. TST-T001' in result.stdout
-        assert '2. TST-T002' in result.stdout
-        assert '3. TST-T003' in result.stdout
+        assert '1. TW-T001' in result.stdout
+        assert '2. TW-T002' in result.stdout
+        assert '3. TW-T003' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        r1 = conn.execute("SELECT seq_order FROM tasks WHERE id='TST-T001'").fetchone()
-        r2 = conn.execute("SELECT seq_order FROM tasks WHERE id='TST-T002'").fetchone()
-        r3 = conn.execute("SELECT seq_order FROM tasks WHERE id='TST-T003'").fetchone()
+        r1 = conn.execute("SELECT seq_order FROM tasks WHERE id='TW-T001'").fetchone()
+        r2 = conn.execute("SELECT seq_order FROM tasks WHERE id='TW-T002'").fetchone()
+        r3 = conn.execute("SELECT seq_order FROM tasks WHERE id='TW-T003'").fetchone()
         assert r1['seq_order'] == 1
         assert r2['seq_order'] == 2
         assert r3['seq_order'] == 3
@@ -105,7 +106,7 @@ def test_workflow_set_order():
 def test_workflow_set_order_invalid_task():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        result = run_cli('--db', db, 'workflow', 'set-order', 'TST-T999')
+        result = run_cli('--db', db, 'workflow', 'set-order', 'TW-T999')
         assert result.returncode == 1
 
 
@@ -113,14 +114,14 @@ def test_workflow_set_parallel():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
         result = run_cli('--db', db, 'workflow', 'set-parallel',
-                         '--group', 'auth-group', 'TST-T002', 'TST-T003')
+                         '--group', 'auth-group', 'TW-T002', 'TW-T003')
         assert result.returncode == 0
         assert 'auth-group' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        r2 = conn.execute("SELECT parallel_group FROM tasks WHERE id='TST-T002'").fetchone()
-        r3 = conn.execute("SELECT parallel_group FROM tasks WHERE id='TST-T003'").fetchone()
+        r2 = conn.execute("SELECT parallel_group FROM tasks WHERE id='TW-T002'").fetchone()
+        r3 = conn.execute("SELECT parallel_group FROM tasks WHERE id='TW-T003'").fetchone()
         assert r2['parallel_group'] == 'auth-group'
         assert r3['parallel_group'] == 'auth-group'
         conn.close()
@@ -129,32 +130,32 @@ def test_workflow_set_parallel():
 def test_workflow_add_dep():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        result = run_cli('--db', db, 'workflow', 'add-dep', 'TST-T003',
-                         '--depends-on', 'TST-T001', 'TST-T002')
+        result = run_cli('--db', db, 'workflow', 'add-dep', 'TW-T003',
+                         '--depends-on', 'TW-T001', 'TW-T002')
         assert result.returncode == 0
-        assert 'TST-T001' in result.stdout
-        assert 'TST-T002' in result.stdout
+        assert 'TW-T001' in result.stdout
+        assert 'TW-T002' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT depends_on FROM tasks WHERE id='TST-T003'").fetchone()
+        row = conn.execute("SELECT depends_on FROM tasks WHERE id='TW-T003'").fetchone()
         deps = json.loads(row['depends_on'])
-        assert 'TST-T001' in deps
-        assert 'TST-T002' in deps
+        assert 'TW-T001' in deps
+        assert 'TW-T002' in deps
         conn.close()
 
 
 def test_workflow_add_dep_merges():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        run_cli('--db', db, 'workflow', 'add-dep', 'TST-T003',
-                '--depends-on', 'TST-T001')
-        run_cli('--db', db, 'workflow', 'add-dep', 'TST-T003',
-                '--depends-on', 'TST-T002')
+        run_cli('--db', db, 'workflow', 'add-dep', 'TW-T003',
+                '--depends-on', 'TW-T001')
+        run_cli('--db', db, 'workflow', 'add-dep', 'TW-T003',
+                '--depends-on', 'TW-T002')
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT depends_on FROM tasks WHERE id='TST-T003'").fetchone()
+        row = conn.execute("SELECT depends_on FROM tasks WHERE id='TW-T003'").fetchone()
         deps = json.loads(row['depends_on'])
         assert len(deps) == 2
         conn.close()
@@ -163,26 +164,26 @@ def test_workflow_add_dep_merges():
 def test_workflow_add_dep_no_duplicates():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        run_cli('--db', db, 'workflow', 'add-dep', 'TST-T003', '--depends-on', 'TST-T001')
-        run_cli('--db', db, 'workflow', 'add-dep', 'TST-T003', '--depends-on', 'TST-T001')
+        run_cli('--db', db, 'workflow', 'add-dep', 'TW-T003', '--depends-on', 'TW-T001')
+        run_cli('--db', db, 'workflow', 'add-dep', 'TW-T003', '--depends-on', 'TW-T001')
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT depends_on FROM tasks WHERE id='TST-T003'").fetchone()
+        row = conn.execute("SELECT depends_on FROM tasks WHERE id='TW-T003'").fetchone()
         deps = json.loads(row['depends_on'])
-        assert deps.count('TST-T001') == 1
+        assert deps.count('TW-T001') == 1
         conn.close()
 
 
 def test_workflow_show():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        run_cli('--db', db, 'workflow', 'set-order', 'TST-T001', 'TST-T002', 'TST-T003')
-        run_cli('--db', db, 'workflow', 'set-parallel', '--group', 'grp', 'TST-T002', 'TST-T003')
+        run_cli('--db', db, 'workflow', 'set-order', 'TW-T001', 'TW-T002', 'TW-T003')
+        run_cli('--db', db, 'workflow', 'set-parallel', '--group', 'grp', 'TW-T002', 'TW-T003')
         result = run_cli('--db', db, 'workflow', 'show')
         assert result.returncode == 0
-        assert 'TST-T001' in result.stdout
-        assert 'TST-T002' in result.stdout
+        assert 'TW-T001' in result.stdout
+        assert 'TW-T002' in result.stdout
         assert 'grp' in result.stdout
 
 
@@ -196,33 +197,33 @@ def test_workflow_show_empty():
 def test_workflow_next_all_todo():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        run_cli('--db', db, 'workflow', 'set-order', 'TST-T001', 'TST-T002', 'TST-T003')
+        run_cli('--db', db, 'workflow', 'set-order', 'TW-T001', 'TW-T002', 'TW-T003')
         result = run_cli('--db', db, 'workflow', 'next')
-        assert 'TST-T001' in result.stdout
+        assert 'TW-T001' in result.stdout
 
 
 def test_workflow_next_respects_dependencies():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        run_cli('--db', db, 'workflow', 'set-order', 'TST-T001', 'TST-T002', 'TST-T003')
-        run_cli('--db', db, 'workflow', 'add-dep', 'TST-T002', '--depends-on', 'TST-T001')
-        run_cli('--db', db, 'workflow', 'add-dep', 'TST-T003', '--depends-on', 'TST-T002')
+        run_cli('--db', db, 'workflow', 'set-order', 'TW-T001', 'TW-T002', 'TW-T003')
+        run_cli('--db', db, 'workflow', 'add-dep', 'TW-T002', '--depends-on', 'TW-T001')
+        run_cli('--db', db, 'workflow', 'add-dep', 'TW-T003', '--depends-on', 'TW-T002')
 
         result = run_cli('--db', db, 'workflow', 'next')
-        assert 'TST-T001' in result.stdout
-        assert 'TST-T002' not in result.stdout
-        assert 'TST-T003' not in result.stdout
+        assert 'TW-T001' in result.stdout
+        assert 'TW-T002' not in result.stdout
+        assert 'TW-T003' not in result.stdout
 
 
 def test_workflow_next_after_dep_done():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        run_cli('--db', db, 'workflow', 'set-order', 'TST-T001', 'TST-T002', 'TST-T003')
-        run_cli('--db', db, 'workflow', 'add-dep', 'TST-T002', '--depends-on', 'TST-T001')
-        run_cli('--db', db, 'task', 'update', 'TST-T001', '--status', 'done')
+        run_cli('--db', db, 'workflow', 'set-order', 'TW-T001', 'TW-T002', 'TW-T003')
+        run_cli('--db', db, 'workflow', 'add-dep', 'TW-T002', '--depends-on', 'TW-T001')
+        run_cli('--db', db, 'task', 'update', 'TW-T001', '--status', 'done')
 
         result = run_cli('--db', db, 'workflow', 'next')
-        assert 'TST-T002' in result.stdout
+        assert 'TW-T002' in result.stdout
 
 
 def test_workflow_current_none():
@@ -236,6 +237,61 @@ def test_workflow_current_none():
 def test_workflow_current_active():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_tasks(tmpdir)
-        run_cli('--db', db, 'task', 'update', 'TST-T001', '--status', 'in_progress')
+        run_cli('--db', db, 'task', 'update', 'TW-T001', '--status', 'in_progress')
         result = run_cli('--db', db, 'workflow', 'current')
-        assert result.stdout.strip() == 'TST-T001'
+        assert result.stdout.strip() == 'TW-T001'
+
+
+def test_workflow_create_with_description():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp = os.path.join(tmpdir, 'test-proj')
+        run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
+        db = os.path.join(pp, 'taskops.db')
+        result = run_cli('--db', db, 'workflow', 'create',
+                         '--title', 'Real Time Sync',
+                         '--description', 'Sync engine for live data')
+        assert result.returncode == 0
+        assert 'TST-RTS' in result.stdout
+
+
+def test_workflow_list_shows_description():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp = os.path.join(tmpdir, 'test-proj')
+        run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
+        db = os.path.join(pp, 'taskops.db')
+        run_cli('--db', db, 'workflow', 'create',
+                '--title', 'Real Time Sync',
+                '--description', 'Sync engine for live data')
+        result = run_cli('--db', db, 'workflow', 'list')
+        assert result.returncode == 0
+        assert 'TST-RTS' in result.stdout
+        assert 'Sync engine for live data' in result.stdout
+
+
+def test_workflow_short_id_collision():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp = os.path.join(tmpdir, 'test-proj')
+        run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
+        db = os.path.join(pp, 'taskops.db')
+        r1 = run_cli('--db', db, 'workflow', 'create', '--title', 'Real Time Sync')
+        r2 = run_cli('--db', db, 'workflow', 'create', '--title', 'Real Time Sync')
+        assert r1.returncode == 0
+        assert r2.returncode == 0
+        assert 'TST-RTS' in r1.stdout
+        assert 'TST-RTS1' in r2.stdout
+
+
+def test_workflow_import_uses_wf_short_prefix():
+    """Imported epics/tasks use workflow short prefix, not project prefix."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        pp = os.path.join(tmpdir, 'test-proj')
+        run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
+        db = os.path.join(pp, 'taskops.db')
+        run_cli('--db', db, 'workflow', 'create', '--title', 'Real Time Sync')
+        structure = json.dumps({
+            "epics": [{"title": "Epic One", "tasks": [{"title": "Task A"}]}]
+        })
+        result = run_cli('--db', db, 'workflow', 'import', 'TST-RTS', '--structure', structure)
+        assert result.returncode == 0
+        assert 'RTS-E001' in result.stdout
+        assert 'RTS-T001' in result.stdout
