@@ -23,22 +23,23 @@ def setup_project_with_task(tmpdir):
     pp = os.path.join(tmpdir, 'test-proj')
     run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
     db = os.path.join(pp, 'taskops.db')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 1')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
+    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A', '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 1', '--workflow', 'TST-TW')
     return pp, db
 
 
 def test_op_start():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_cli('--db', db, 'op', 'start', 'TST-T001', '--platform', 'claude_code')
+        result = run_cli('--db', db, 'op', 'start', 'TW-T001', '--platform', 'claude_code')
         assert result.returncode == 0
         assert 'started' in result.stdout.lower()
         assert 'claude_code' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT * FROM operations WHERE task_id='TST-T001'").fetchone()
+        row = conn.execute("SELECT * FROM operations WHERE task_id='TW-T001'").fetchone()
         assert row['operation_type'] == 'start'
         assert row['agent_platform'] == 'claude_code'
         assert row['started_at'] is not None
@@ -55,8 +56,8 @@ def test_op_start_invalid_task():
 def test_op_progress():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'start', 'TST-T001')
-        result = run_cli('--db', db, 'op', 'progress', 'TST-T001',
+        run_cli('--db', db, 'op', 'start', 'TW-T001')
+        result = run_cli('--db', db, 'op', 'progress', 'TW-T001',
                          '--summary', '2 of 3 endpoints done')
         assert result.returncode == 0
         assert '2 of 3' in result.stdout
@@ -65,13 +66,13 @@ def test_op_progress():
 def test_op_progress_with_subagent():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'progress', 'TST-T001',
+        run_cli('--db', db, 'op', 'progress', 'TW-T001',
                 '--summary', 'Research done', '--subagent')
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT subagent_used FROM operations WHERE task_id='TST-T001' AND operation_type='progress'"
+            "SELECT subagent_used FROM operations WHERE task_id='TW-T001' AND operation_type='progress'"
         ).fetchone()
         assert row['subagent_used'] == 1
         conn.close()
@@ -80,13 +81,13 @@ def test_op_progress_with_subagent():
 def test_op_progress_with_details():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'progress', 'TST-T001',
+        run_cli('--db', db, 'op', 'progress', 'TW-T001',
                 '--summary', 'Files edited', '--details', '{"files":["auth.py"]}')
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT details FROM operations WHERE task_id='TST-T001' AND operation_type='progress'"
+            "SELECT details FROM operations WHERE task_id='TW-T001' AND operation_type='progress'"
         ).fetchone()
         assert 'auth.py' in row['details']
         conn.close()
@@ -95,8 +96,8 @@ def test_op_progress_with_details():
 def test_op_complete():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'start', 'TST-T001')
-        result = run_cli('--db', db, 'op', 'complete', 'TST-T001',
+        run_cli('--db', db, 'op', 'start', 'TW-T001')
+        result = run_cli('--db', db, 'op', 'complete', 'TW-T001',
                          '--summary', 'Login API done')
         assert result.returncode == 0
         assert 'completed' in result.stdout.lower()
@@ -104,7 +105,7 @@ def test_op_complete():
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT * FROM operations WHERE task_id='TST-T001' AND operation_type='complete'"
+            "SELECT * FROM operations WHERE task_id='TW-T001' AND operation_type='complete'"
         ).fetchone()
         assert row['completed_at'] is not None
         conn.close()
@@ -113,7 +114,7 @@ def test_op_complete():
 def test_op_error():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_cli('--db', db, 'op', 'error', 'TST-T001',
+        result = run_cli('--db', db, 'op', 'error', 'TW-T001',
                          '--summary', 'Build failed')
         assert result.returncode == 0
         assert 'error' in result.stdout.lower()
@@ -122,7 +123,7 @@ def test_op_error():
 def test_op_interrupt():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_cli('--db', db, 'op', 'interrupt', 'TST-T001',
+        result = run_cli('--db', db, 'op', 'interrupt', 'TW-T001',
                          '--summary', 'Need API key')
         assert result.returncode == 0
         assert 'interrupt' in result.stdout.lower()
@@ -131,9 +132,9 @@ def test_op_interrupt():
 def test_op_log_all():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'start', 'TST-T001', '--platform', 'claude_code')
-        run_cli('--db', db, 'op', 'progress', 'TST-T001', '--summary', 'Step 1 done')
-        run_cli('--db', db, 'op', 'complete', 'TST-T001', '--summary', 'All done')
+        run_cli('--db', db, 'op', 'start', 'TW-T001', '--platform', 'claude_code')
+        run_cli('--db', db, 'op', 'progress', 'TW-T001', '--summary', 'Step 1 done')
+        run_cli('--db', db, 'op', 'complete', 'TW-T001', '--summary', 'All done')
 
         result = run_cli('--db', db, 'op', 'log')
         assert 'start' in result.stdout
@@ -145,13 +146,13 @@ def test_op_log_filter_by_task():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
         # Create a second task
-        run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 2')
-        run_cli('--db', db, 'op', 'start', 'TST-T001')
-        run_cli('--db', db, 'op', 'start', 'TST-T002')
+        run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 2', '--workflow', 'TST-TW')
+        run_cli('--db', db, 'op', 'start', 'TW-T001')
+        run_cli('--db', db, 'op', 'start', 'TW-T002')
 
-        result = run_cli('--db', db, 'op', 'log', '--task', 'TST-T001')
-        assert 'TST-T001' in result.stdout
-        assert 'TST-T002' not in result.stdout
+        result = run_cli('--db', db, 'op', 'log', '--task', 'TW-T001')
+        assert 'TW-T001' in result.stdout
+        assert 'TW-T002' not in result.stdout
 
 
 def test_op_log_empty():
@@ -164,9 +165,9 @@ def test_op_log_empty():
 def test_op_progress_with_tool_metadata():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'start', 'TST-T001')
+        run_cli('--db', db, 'op', 'start', 'TW-T001')
         result = run_cli(
-            '--db', db, 'op', 'progress', 'TST-T001',
+            '--db', db, 'op', 'progress', 'TW-T001',
             '--summary', 'edited file',
             '--tool', 'Edit',
             '--skill', 'tdd',
@@ -177,7 +178,7 @@ def test_op_progress_with_tool_metadata():
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT * FROM operations WHERE task_id='TST-T001' AND operation_type='progress'"
+            "SELECT * FROM operations WHERE task_id='TW-T001' AND operation_type='progress'"
         ).fetchone()
         assert row['tool_name'] == 'Edit'
         assert row['skill_name'] == 'tdd'
@@ -189,7 +190,7 @@ def test_op_progress_metadata_optional():
     """op progress without metadata args should still work."""
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_cli('--db', db, 'op', 'progress', 'TST-T001',
+        result = run_cli('--db', db, 'op', 'progress', 'TW-T001',
                          '--summary', 'plain progress')
         assert result.returncode == 0
 
@@ -197,7 +198,7 @@ def test_op_progress_metadata_optional():
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT tool_name, skill_name, mcp_name FROM operations "
-            "WHERE task_id='TST-T001' AND operation_type='progress'"
+            "WHERE task_id='TW-T001' AND operation_type='progress'"
         ).fetchone()
         assert row['tool_name'] is None
         assert row['skill_name'] is None
@@ -208,9 +209,9 @@ def test_op_progress_metadata_optional():
 def test_op_complete_with_metadata():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'start', 'TST-T001')
+        run_cli('--db', db, 'op', 'start', 'TW-T001')
         result = run_cli(
-            '--db', db, 'op', 'complete', 'TST-T001',
+            '--db', db, 'op', 'complete', 'TW-T001',
             '--summary', 'all done',
             '--tokens-in', '1200',
             '--tokens-out', '450',
@@ -222,7 +223,7 @@ def test_op_complete_with_metadata():
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
         row = conn.execute(
-            "SELECT * FROM operations WHERE task_id='TST-T001' AND operation_type='complete'"
+            "SELECT * FROM operations WHERE task_id='TW-T001' AND operation_type='complete'"
         ).fetchone()
         assert row['input_tokens'] == 1200
         assert row['output_tokens'] == 450
@@ -235,7 +236,7 @@ def test_op_complete_metadata_optional():
     """op complete without metadata args should still work."""
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_cli('--db', db, 'op', 'complete', 'TST-T001',
+        result = run_cli('--db', db, 'op', 'complete', 'TW-T001',
                          '--summary', 'done')
         assert result.returncode == 0
 
@@ -243,7 +244,7 @@ def test_op_complete_metadata_optional():
         conn.row_factory = sqlite3.Row
         row = conn.execute(
             "SELECT input_tokens, output_tokens, retry_count, duration_seconds "
-            "FROM operations WHERE task_id='TST-T001' AND operation_type='complete'"
+            "FROM operations WHERE task_id='TW-T001' AND operation_type='complete'"
         ).fetchone()
         assert row['input_tokens'] is None
         assert row['output_tokens'] is None
@@ -255,15 +256,15 @@ def test_op_complete_metadata_optional():
 def test_op_log_shows_metadata():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'op', 'progress', 'TST-T001',
+        run_cli('--db', db, 'op', 'progress', 'TW-T001',
                 '--summary', 'edited',
                 '--tool', 'Edit', '--skill', 'tdd', '--mcp', 'context7')
-        run_cli('--db', db, 'op', 'complete', 'TST-T001',
+        run_cli('--db', db, 'op', 'complete', 'TW-T001',
                 '--summary', 'done',
                 '--tokens-in', '500', '--tokens-out', '200',
                 '--retry-count', '1', '--duration', '30')
 
-        result = run_cli('--db', db, 'op', 'log', '--task', 'TST-T001')
+        result = run_cli('--db', db, 'op', 'log', '--task', 'TW-T001')
         assert result.returncode == 0
         assert 'Edit' in result.stdout
         assert 'tdd' in result.stdout

@@ -22,10 +22,11 @@ def setup_project(tmpdir):
     proj_path = os.path.join(tmpdir, 'qry-proj')
     run_cli('init', '--name', 'QryTest', '--prefix', 'QRY', '--path', proj_path)
     db = os.path.join(proj_path, 'taskops.db')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
-    run_cli('--db', db, 'task', 'create', '--parent', 'QRY-E001', '--title', 'Task One')
-    run_cli('--db', db, 'task', 'create', '--parent', 'QRY-E001', '--title', 'Task Two')
-    run_cli('--db', db, 'workflow', 'set-order', 'QRY-T001', 'QRY-T002')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'QRY Plan')  # → QRY-QP
+    run_cli('--db', db, 'epic', 'create', '--workflow', 'QRY-QP', '--title', 'Epic A')
+    run_cli('--db', db, 'task', 'create', '--workflow', 'QRY-QP', '--parent', 'QP-E001', '--title', 'Task One')
+    run_cli('--db', db, 'task', 'create', '--workflow', 'QRY-QP', '--parent', 'QP-E001', '--title', 'Task Two')
+    run_cli('--db', db, 'workflow', 'set-order', 'QP-T001', 'QP-T002')
     return proj_path, db
 
 
@@ -53,7 +54,7 @@ def test_show_contains_task_titles():
 def test_show_reflects_status():
     with tempfile.TemporaryDirectory() as tmpdir:
         proj_path, db = setup_project(tmpdir)
-        run_cli('--db', db, 'task', 'update', 'QRY-T001', '--status', 'done')
+        run_cli('--db', db, 'task', 'update', 'QP-T001', '--status', 'done')
         result = run_cli('--db', db, 'query', 'show')
         content = result.stdout
         assert 'done' in content

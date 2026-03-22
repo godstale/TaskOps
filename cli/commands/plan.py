@@ -3,7 +3,7 @@ Plan 관리 커맨드. 프로젝트 계획 변경사항을 DB에 적용.
 """
 import json
 from datetime import datetime
-from .utils import get_db, get_project_id, get_project_dir, next_id
+from .utils import get_db, get_project_id, get_project_dir, next_id, get_workflow_prefix
 from ..db.connection import close_connection
 
 
@@ -15,7 +15,7 @@ def register(subparsers):
     group = update.add_mutually_exclusive_group(required=True)
     group.add_argument('--changes', help='JSON string of changes')
     group.add_argument('--changes-file', help='Path to JSON file of changes')
-    update.add_argument('--workflow', help='Scope new task creates to this workflow ID')
+    update.add_argument('--workflow', help='Workflow ID for new creates (required if "create" items are present)')
     update.set_defaults(func=handle_update)
 
     parser.set_defaults(func=lambda args: parser.print_help())
@@ -44,6 +44,15 @@ def handle_update(args):
     updates = changes.get('update', [])
     deletes = changes.get('delete', [])
 
+    # Validate: creates require a workflow_id (via --workflow flag or per-item workflow_id)
+    workflow_arg = getattr(args, 'workflow', None)
+    if creates and not workflow_arg:
+        missing = [i for i in creates if not i.get('workflow_id')]
+        if missing:
+            print("Error: 'create' items require a workflow_id. "
+                  "Pass --workflow <W-ID> or include 'workflow_id' in each create item.")
+            raise SystemExit(1)
+
     conn = get_db(args)
     try:
         project_id = get_project_id(conn)
@@ -62,7 +71,9 @@ def handle_update(args):
         try:
             for item in valid_creates:
                 type_char = 'E' if item['type'] == 'epic' else 'T'
-                new_id = next_id(conn, project_id, type_char)
+                effective_wf_id = item.get('workflow_id') or workflow_arg
+                wf_short = get_workflow_prefix(effective_wf_id)
+                new_id = next_id(conn, wf_short, type_char)
                 conn.execute(
                     "INSERT INTO tasks "
                     "(id, project_id, type, title, description, status, parent_id, workflow_id, created_at, updated_at) "
@@ -70,7 +81,7 @@ def handle_update(args):
                     (new_id, project_id, item['type'], item['title'],
                      item.get('description', ''), item.get('status', 'todo'),
                      item.get('parent_id'),
-                     item.get('workflow_id') or getattr(args, 'workflow', None),
+                     item.get('workflow_id') or workflow_arg,
                      now, now)
                 )
                 created_ids.append(new_id)

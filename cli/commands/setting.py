@@ -1,9 +1,8 @@
 """Setting management command.
-설정 관리 커맨드. DB + SETTINGS.md 양방향 동기화.
+설정 관리 커맨드. workflow_id 별 설정 저장 지원.
 """
-import os
 from datetime import datetime
-from .utils import get_db, get_project_dir
+from .utils import get_db
 from ..db.connection import close_connection
 
 
@@ -15,63 +14,42 @@ def register(subparsers):
     s.add_argument('key', help='Setting key')
     s.add_argument('value', help='Setting value')
     s.add_argument('--desc', default='', help='Description')
+    s.add_argument('--workflow', default='', help='Workflow ID (empty = global)')
     s.set_defaults(func=handle_set)
 
     g = sub.add_parser('get', help='Get a setting value')
     g.add_argument('key', help='Setting key')
+    g.add_argument('--workflow', default='', help='Workflow ID (empty = global)')
     g.set_defaults(func=handle_get)
 
     lst = sub.add_parser('list', help='List all settings')
+    lst.add_argument('--workflow', default=None,
+                     help='Filter by workflow ID (omit to show all)')
     lst.set_defaults(func=handle_list)
 
     d = sub.add_parser('delete', help='Delete a setting')
     d.add_argument('key', help='Setting key')
+    d.add_argument('--workflow', default='', help='Workflow ID (empty = global)')
     d.set_defaults(func=handle_delete)
 
     parser.set_defaults(func=lambda args: parser.print_help())
-
-
-def _regenerate_settings_md(conn, args):
-    """Regenerate SETTINGS.md from DB."""
-    project_dir = get_project_dir(args)
-    settings_path = os.path.join(project_dir, 'SETTINGS.md')
-
-    rows = conn.execute(
-        "SELECT key, value, description FROM settings ORDER BY key"
-    ).fetchall()
-
-    lines = []
-    lines.append("# Project Settings")
-    lines.append("")
-    lines.append("> Agent Behavior Guidelines")
-    lines.append("")
-
-    if rows:
-        for row in rows:
-            desc = f"  # {row['description']}" if row['description'] else ""
-            lines.append(f"- {row['key']}: {row['value']}{desc}")
-    else:
-        lines.append("(No settings)")
-
-    lines.append("")
-    with open(settings_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
 
 
 def handle_set(args):
     conn = get_db(args)
     try:
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        wf = getattr(args, 'workflow', '') or ''
         conn.execute(
-            "INSERT INTO settings (key, value, description, updated_at) "
-            "VALUES (?, ?, ?, ?) "
-            "ON CONFLICT(key) DO UPDATE SET value=?, description=?, updated_at=?",
-            (args.key, args.value, args.desc, now,
+            "INSERT INTO settings (workflow_id, key, value, description, updated_at) "
+            "VALUES (?, ?, ?, ?, ?) "
+            "ON CONFLICT(workflow_id, key) DO UPDATE SET value=?, description=?, updated_at=?",
+            (wf, args.key, args.value, args.desc, now,
              args.value, args.desc, now)
         )
         conn.commit()
-        _regenerate_settings_md(conn, args)
-        print(f"Setting set: {args.key} = {args.value}")
+        scope = f" [workflow: {wf}]" if wf else " [global]"
+        print(f"Setting set: {args.key} = {args.value}{scope}")
     finally:
         close_connection(conn)
 
@@ -79,8 +57,10 @@ def handle_set(args):
 def handle_get(args):
     conn = get_db(args)
     try:
+        wf = getattr(args, 'workflow', '') or ''
         row = conn.execute(
-            "SELECT value, description FROM settings WHERE key=?", (args.key,)
+            "SELECT value, description FROM settings WHERE workflow_id=? AND key=?",
+            (wf, args.key)
         ).fetchone()
         if row is None:
             print(f"Setting not found: {args.key}")
@@ -94,15 +74,25 @@ def handle_get(args):
 def handle_list(args):
     conn = get_db(args)
     try:
-        rows = conn.execute(
-            "SELECT key, value, description FROM settings ORDER BY key"
-        ).fetchall()
+        wf_filter = getattr(args, 'workflow', None)
+        if wf_filter is not None:
+            rows = conn.execute(
+                "SELECT workflow_id, key, value, description FROM settings "
+                "WHERE workflow_id=? ORDER BY key",
+                (wf_filter,)
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT workflow_id, key, value, description FROM settings ORDER BY workflow_id, key"
+            ).fetchall()
+
         if not rows:
             print("No settings found.")
             return
         for row in rows:
             desc = f"  # {row['description']}" if row['description'] else ""
-            print(f"  {row['key']} = {row['value']}{desc}")
+            scope = f" [workflow: {row['workflow_id']}]" if row['workflow_id'] else " [global]"
+            print(f"  {row['key']} = {row['value']}{scope}{desc}")
     finally:
         close_connection(conn)
 
@@ -110,12 +100,15 @@ def handle_list(args):
 def handle_delete(args):
     conn = get_db(args)
     try:
-        result = conn.execute("DELETE FROM settings WHERE key=?", (args.key,))
+        wf = getattr(args, 'workflow', '') or ''
+        result = conn.execute(
+            "DELETE FROM settings WHERE workflow_id=? AND key=?", (wf, args.key)
+        )
         conn.commit()
         if result.rowcount == 0:
             print(f"Setting not found: {args.key}")
             raise SystemExit(1)
-        _regenerate_settings_md(conn, args)
-        print(f"Setting deleted: {args.key}")
+        scope = f" [workflow: {wf}]" if wf else " [global]"
+        print(f"Setting deleted: {args.key}{scope}")
     finally:
         close_connection(conn)

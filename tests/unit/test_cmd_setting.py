@@ -60,17 +60,6 @@ def test_setting_set_upsert():
         conn.close()
 
 
-def test_setting_set_regenerates_settings_md():
-    with tempfile.TemporaryDirectory() as tmpdir:
-        pp, db = setup_project(tmpdir)
-        run_cli('--db', db, 'setting', 'set', 'custom_key', 'custom_val',
-                '--desc', 'Custom setting')
-
-        with open(os.path.join(pp, 'SETTINGS.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert 'custom_key' in content
-        assert 'custom_val' in content
-
 
 def test_setting_get():
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -117,11 +106,8 @@ def test_setting_delete_not_found():
         assert result.returncode == 1
 
 
-def test_setting_delete_regenerates_settings_md():
+def test_setting_does_not_create_settings_md():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
-        run_cli('--db', db, 'setting', 'delete', 'autonomy_level')
-
-        with open(os.path.join(pp, 'SETTINGS.md'), encoding='utf-8') as f:
-            content = f.read()
-        assert 'autonomy_level' not in content
+        run_cli('--db', db, 'setting', 'set', 'my_key', 'my_value')
+        assert not os.path.exists(os.path.join(pp, 'SETTINGS.md'))

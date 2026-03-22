@@ -24,8 +24,9 @@ def setup_project(tmpdir):
     pp = os.path.join(tmpdir, 'test-proj')
     run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
     db = os.path.join(pp, 'taskops.db')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 1')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
+    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A', '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 1', '--workflow', 'TST-TW')
     return pp, db
 
 
@@ -35,13 +36,13 @@ def test_plan_create_epic():
         changes = json.dumps({
             "create": [{"type": "epic", "title": "New Epic"}]
         })
-        result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
+        result = run_cli('--db', db, 'plan', 'update', '--changes', changes, '--workflow', 'TST-TW')
         assert result.returncode == 0
-        assert 'TST-E002' in result.stdout
+        assert 'TW-E002' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT * FROM tasks WHERE id='TST-E002'").fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id='TW-E002'").fetchone()
         assert row is not None
         assert row['title'] == 'New Epic'
         assert row['type'] == 'epic'
@@ -52,18 +53,18 @@ def test_plan_create_task():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
         changes = json.dumps({
-            "create": [{"type": "task", "title": "New Task", "parent_id": "TST-E001"}]
+            "create": [{"type": "task", "title": "New Task", "parent_id": "TW-E001"}]
         })
-        result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
+        result = run_cli('--db', db, 'plan', 'update', '--changes', changes, '--workflow', 'TST-TW')
         assert result.returncode == 0
-        assert 'TST-T002' in result.stdout
+        assert 'TW-T002' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT * FROM tasks WHERE id='TST-T002'").fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id='TW-T002'").fetchone()
         assert row is not None
         assert row['title'] == 'New Task'
-        assert row['parent_id'] == 'TST-E001'
+        assert row['parent_id'] == 'TW-E001'
         conn.close()
 
 
@@ -73,7 +74,7 @@ def test_plan_create_invalid_parent_skipped():
         changes = json.dumps({
             "create": [{"type": "task", "title": "Bad Task", "parent_id": "TST-E999"}]
         })
-        result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
+        result = run_cli('--db', db, 'plan', 'update', '--changes', changes, '--workflow', 'TST-TW')
         assert result.returncode == 0
         assert 'Warning' in result.stdout
 
@@ -87,15 +88,15 @@ def test_plan_update_task():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
         changes = json.dumps({
-            "update": [{"id": "TST-T001", "title": "Renamed Task", "status": "done"}]
+            "update": [{"id": "TW-T001", "title": "Renamed Task", "status": "done"}]
         })
         result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
         assert result.returncode == 0
-        assert 'TST-T001' in result.stdout
+        assert 'TW-T001' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT title, status FROM tasks WHERE id='TST-T001'").fetchone()
+        row = conn.execute("SELECT title, status FROM tasks WHERE id='TW-T001'").fetchone()
         assert row['title'] == 'Renamed Task'
         assert row['status'] == 'done'
         conn.close()
@@ -115,20 +116,20 @@ def test_plan_update_unknown_id_skipped():
 def test_plan_delete_task():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
-        # Create a subtask under TST-T001
-        run_cli('--db', db, 'task', 'create', '--parent', 'TST-T001', '--title', 'Subtask')
+        # Create a subtask under TW-T001
+        run_cli('--db', db, 'task', 'create', '--parent', 'TW-T001', '--title', 'Subtask', '--workflow', 'TST-TW')
 
         changes = json.dumps({
-            "delete": [{"id": "TST-T001"}]
+            "delete": [{"id": "TW-T001"}]
         })
         result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
         assert result.returncode == 0
-        assert 'TST-T001' in result.stdout
+        assert 'TW-T001' in result.stdout
 
         conn = sqlite3.connect(db)
-        # Both TST-T001 and its subtask (TST-T002) should be gone
+        # Both TW-T001 and its subtask (TW-T002) should be gone
         count = conn.execute(
-            "SELECT COUNT(*) FROM tasks WHERE id IN ('TST-T001', 'TST-T002')"
+            "SELECT COUNT(*) FROM tasks WHERE id IN ('TW-T001', 'TW-T002')"
         ).fetchone()[0]
         assert count == 0
         conn.close()
@@ -169,9 +170,9 @@ def test_plan_update_does_not_regenerate_todo_md():
         if os.path.exists(todo_path):
             os.remove(todo_path)
         changes = json.dumps({
-            "create": [{"type": "task", "title": "New Task", "parent_id": "TST-E001"}]
+            "create": [{"type": "task", "title": "New Task", "parent_id": "TW-E001"}]
         })
-        result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
+        result = run_cli('--db', db, 'plan', 'update', '--changes', changes, '--workflow', 'TST-TW')
         assert result.returncode == 0
         # plan update should NOT write TODO.md anymore
         assert not os.path.exists(todo_path)
@@ -185,23 +186,23 @@ def test_plan_update_from_file():
         with open(changes_file, 'w', encoding='utf-8') as f:
             json.dump(changes, f)
 
-        result = run_cli('--db', db, 'plan', 'update', '--changes-file', changes_file)
+        result = run_cli('--db', db, 'plan', 'update', '--changes-file', changes_file, '--workflow', 'TST-TW')
         assert result.returncode == 0
-        assert 'TST-E002' in result.stdout
+        assert 'TW-E002' in result.stdout
 
 
 def test_plan_delete_task_with_operations():
     """Deleting a task with associated operations should not raise FK error."""
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
-        # Add an operation to TST-T001
-        run_cli('--db', db, 'op', 'start', 'TST-T001', '--platform', 'test')
+        # Add an operation to TW-T001
+        run_cli('--db', db, 'op', 'start', 'TW-T001', '--platform', 'test')
 
-        changes = json.dumps({"delete": [{"id": "TST-T001"}]})
+        changes = json.dumps({"delete": [{"id": "TW-T001"}]})
         result = run_cli('--db', db, 'plan', 'update', '--changes', changes)
         assert result.returncode == 0
-        assert 'TST-T001' in result.stdout
+        assert 'TW-T001' in result.stdout
 
         conn = sqlite3.connect(db)
-        assert conn.execute("SELECT COUNT(*) FROM tasks WHERE id='TST-T001'").fetchone()[0] == 0
+        assert conn.execute("SELECT COUNT(*) FROM tasks WHERE id='TW-T001'").fetchone()[0] == 0
         conn.close()

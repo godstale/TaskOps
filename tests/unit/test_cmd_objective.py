@@ -22,21 +22,24 @@ def run_cli(*args):
 def setup_project(tmpdir):
     pp = os.path.join(tmpdir, 'test-proj')
     run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
-    return pp, os.path.join(pp, 'taskops.db')
+    db = os.path.join(pp, 'taskops.db')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
+    return pp, db
 
 
 def test_objective_create_milestone():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
         result = run_cli('--db', db, 'objective', 'create',
-                         '--title', 'MVP Complete', '--milestone', 'Core 3 features done')
+                         '--title', 'MVP Complete', '--milestone', 'Core 3 features done',
+                         '--workflow', 'TST-TW')
         assert result.returncode == 0
-        assert 'TST-O001' in result.stdout
+        assert 'TW-O001' in result.stdout
         assert 'Milestone' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT * FROM tasks WHERE id='TST-O001'").fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id='TW-O001'").fetchone()
         assert row['type'] == 'objective'
         assert row['milestone_target'] == 'Core 3 features done'
         assert row['due_date'] is None
@@ -47,14 +50,15 @@ def test_objective_create_due_date():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
         result = run_cli('--db', db, 'objective', 'create',
-                         '--title', 'Demo Day', '--due-date', '2026-03-20')
+                         '--title', 'Demo Day', '--due-date', '2026-03-20',
+                         '--workflow', 'TST-TW')
         assert result.returncode == 0
-        assert 'TST-O001' in result.stdout
+        assert 'TW-O001' in result.stdout
         assert '2026-03-20' in result.stdout
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT * FROM tasks WHERE id='TST-O001'").fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id='TW-O001'").fetchone()
         assert row['due_date'] == '2026-03-20'
         conn.close()
 
@@ -64,27 +68,27 @@ def test_objective_create_both():
         pp, db = setup_project(tmpdir)
         result = run_cli('--db', db, 'objective', 'create',
                          '--title', 'Release', '--milestone', 'All tests pass',
-                         '--due-date', '2026-04-01')
+                         '--due-date', '2026-04-01', '--workflow', 'TST-TW')
         assert result.returncode == 0
-        assert 'TST-O001' in result.stdout
+        assert 'TW-O001' in result.stdout
 
 
 def test_objective_sequential_ids():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
-        run_cli('--db', db, 'objective', 'create', '--title', 'Obj 1')
-        run_cli('--db', db, 'objective', 'create', '--title', 'Obj 2')
-        result = run_cli('--db', db, 'objective', 'create', '--title', 'Obj 3')
-        assert 'TST-O003' in result.stdout
+        run_cli('--db', db, 'objective', 'create', '--title', 'Obj 1', '--workflow', 'TST-TW')
+        run_cli('--db', db, 'objective', 'create', '--title', 'Obj 2', '--workflow', 'TST-TW')
+        result = run_cli('--db', db, 'objective', 'create', '--title', 'Obj 3', '--workflow', 'TST-TW')
+        assert 'TW-O003' in result.stdout
 
 
 def test_objective_list():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
         run_cli('--db', db, 'objective', 'create',
-                '--title', 'MVP', '--milestone', 'Core features')
+                '--title', 'MVP', '--milestone', 'Core features', '--workflow', 'TST-TW')
         run_cli('--db', db, 'objective', 'create',
-                '--title', 'Demo', '--due-date', '2026-03-20')
+                '--title', 'Demo', '--due-date', '2026-03-20', '--workflow', 'TST-TW')
         result = run_cli('--db', db, 'objective', 'list')
         assert 'MVP' in result.stdout
         assert 'Demo' in result.stdout
@@ -102,13 +106,13 @@ def test_objective_list_empty():
 def test_objective_update_status():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
-        run_cli('--db', db, 'objective', 'create', '--title', 'MVP')
-        result = run_cli('--db', db, 'objective', 'update', 'TST-O001', '--status', 'done')
+        run_cli('--db', db, 'objective', 'create', '--title', 'MVP', '--workflow', 'TST-TW')
+        result = run_cli('--db', db, 'objective', 'update', 'TW-O001', '--status', 'done')
         assert result.returncode == 0
 
         conn = sqlite3.connect(db)
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT status FROM tasks WHERE id='TST-O001'").fetchone()
+        row = conn.execute("SELECT status FROM tasks WHERE id='TW-O001'").fetchone()
         assert row['status'] == 'done'
         conn.close()
 
@@ -123,8 +127,8 @@ def test_objective_update_not_found():
 def test_objective_delete():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project(tmpdir)
-        run_cli('--db', db, 'objective', 'create', '--title', 'MVP')
-        result = run_cli('--db', db, 'objective', 'delete', 'TST-O001')
+        run_cli('--db', db, 'objective', 'create', '--title', 'MVP', '--workflow', 'TST-TW')
+        result = run_cli('--db', db, 'objective', 'delete', 'TW-O001')
         assert result.returncode == 0
         assert 'Deleted' in result.stdout
 

@@ -50,42 +50,42 @@ def setup_with_workflow(tmpdir):
 def test_import_creates_epics():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', SAMPLE)
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', SAMPLE)
         assert r.returncode == 0
-        assert 'TST-E001' in r.stdout
+        assert 'ML-E001' in r.stdout
         assert 'Phase 1: Setup' in r.stdout
-        assert 'TST-E002' in r.stdout
+        assert 'ML-E002' in r.stdout
         assert 'Phase 2: Core' in r.stdout
 
 
 def test_import_creates_tasks():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', SAMPLE)
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', SAMPLE)
         assert r.returncode == 0
-        assert 'TST-T001' in r.stdout
+        assert 'ML-T001' in r.stdout
         assert 'Init project' in r.stdout
-        assert 'TST-T003' in r.stdout
+        assert 'ML-T003' in r.stdout
         assert 'Write tests' in r.stdout
 
 
 def test_import_creates_subtasks():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', SAMPLE)
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', SAMPLE)
         assert r.returncode == 0
-        assert 'TST-T002' in r.stdout
+        assert 'ML-T002' in r.stdout
         assert 'Create folders' in r.stdout
 
 
 def test_import_replaces_on_reimport():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', SAMPLE)
+        run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', SAMPLE)
         new_structure = json.dumps({
             "epics": [{"title": "Only Epic", "tasks": [{"title": "Only Task"}]}]
         })
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', new_structure)
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', new_structure)
         assert r.returncode == 0
         assert 'Phase 1: Setup' not in r.stdout
         assert 'Only Epic' in r.stdout
@@ -94,14 +94,14 @@ def test_import_replaces_on_reimport():
 def test_import_invalid_workflow_id():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W999', '--structure', SAMPLE)
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ZZZ', '--structure', SAMPLE)
         assert r.returncode != 0
 
 
 def test_import_invalid_json():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', 'not-json')
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', 'not-json')
         assert r.returncode != 0
 
 
@@ -111,25 +111,25 @@ def test_import_from_file():
         struct_file = os.path.join(d, 'structure.json')
         with open(struct_file, 'w') as f:
             f.write(SAMPLE)
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W001',
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ML',
                     '--structure-file', struct_file)
         assert r.returncode == 0
-        assert 'TST-E001' in r.stdout
+        assert 'ML-E001' in r.stdout
 
 
 def test_import_tasks_have_seq_order():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', SAMPLE)
+        run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', SAMPLE)
         # workflow next should return first task
         r = run_cli('--db', db, 'workflow', 'next')
         assert r.returncode == 0
-        assert 'TST-T001' in r.stdout
+        assert 'ML-T001' in r.stdout
 
 
 def test_import_workflow_header_in_output():
     with tempfile.TemporaryDirectory() as d:
         pp, db = setup_with_workflow(d)
-        r = run_cli('--db', db, 'workflow', 'import', 'TST-W001', '--structure', SAMPLE)
-        assert 'TST-W001' in r.stdout
+        r = run_cli('--db', db, 'workflow', 'import', 'TST-ML', '--structure', SAMPLE)
+        assert 'TST-ML' in r.stdout
         assert 'My List' in r.stdout

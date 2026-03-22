@@ -24,22 +24,27 @@ def setup_full_project(tmpdir):
     run_cli('init', '--name', 'Test Project', '--prefix', 'TST', '--path', pp)
     db = os.path.join(pp, 'taskops.db')
 
-    run_cli('--db', db, 'epic', 'create', '--title', 'Auth System')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001',
-            '--title', 'Login API', '--description', 'Implement login endpoint')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Signup API')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-T001', '--title', 'JWT Token')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
+    run_cli('--db', db, 'epic', 'create', '--title', 'Auth System', '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001',
+            '--title', 'Login API', '--description', 'Implement login endpoint',
+            '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Signup API',
+            '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-T001', '--title', 'JWT Token',
+            '--workflow', 'TST-TW')
 
-    run_cli('--db', db, 'task', 'update', 'TST-T001', '--status', 'done')
+    run_cli('--db', db, 'task', 'update', 'TW-T001', '--status', 'done')
 
     run_cli('--db', db, 'objective', 'create',
-            '--title', 'MVP Complete', '--milestone', 'Core features done')
+            '--title', 'MVP Complete', '--milestone', 'Core features done',
+            '--workflow', 'TST-TW')
 
-    run_cli('--db', db, 'workflow', 'set-order', 'TST-T001', 'TST-T002', 'TST-T003')
+    run_cli('--db', db, 'workflow', 'set-order', 'TW-T001', 'TW-T002', 'TW-T003')
 
-    run_cli('--db', db, 'op', 'start', 'TST-T001', '--platform', 'claude_code')
-    run_cli('--db', db, 'op', 'progress', 'TST-T001', '--summary', 'Halfway done')
-    run_cli('--db', db, 'op', 'complete', 'TST-T001', '--summary', 'Login API done')
+    run_cli('--db', db, 'op', 'start', 'TW-T001', '--platform', 'claude_code')
+    run_cli('--db', db, 'op', 'progress', 'TW-T001', '--summary', 'Halfway done')
+    run_cli('--db', db, 'op', 'complete', 'TW-T001', '--summary', 'Login API done')
 
     return pp, db
 
@@ -86,7 +91,7 @@ def test_query_show_stdout():
         pp, db = setup_full_project(tmpdir)
         result = run_cli('--db', db, 'query', 'show')
         assert result.returncode == 0
-        assert 'TST-T001' in result.stdout
+        assert 'TW-T001' in result.stdout
         assert 'Auth System' in result.stdout
         assert 'Login API' in result.stdout
 
@@ -106,7 +111,7 @@ def test_query_show_workflow_filter():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_full_project(tmpdir)
         run_cli('--db', db, 'workflow', 'create', '--title', 'W1')
-        result = run_cli('--db', db, 'query', 'show', '--workflow', 'TST-W001')
+        result = run_cli('--db', db, 'query', 'show', '--workflow', 'TST-TW')
         assert result.returncode == 0
 
 
@@ -114,7 +119,7 @@ def test_query_show_parallel_group():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_full_project(tmpdir)
         run_cli('--db', db, 'workflow', 'set-parallel',
-                '--group', 'auth-grp', 'TST-T002', 'TST-T003')
+                '--group', 'auth-grp', 'TW-T002', 'TW-T003')
         result = run_cli('--db', db, 'query', 'show')
         assert 'auth-grp' in result.stdout
 
