@@ -281,7 +281,7 @@ def handle_list(args):
             return
         for row in rows:
             desc = row['description'] or ''
-            desc_part = f" — {desc[:60]}{'...' if len(desc) > 60 else ''}" if desc else ""
+            desc_part = f" - {desc[:60]}{'...' if len(desc) > 60 else ''}" if desc else ""
             print(f"  {row['id']}: {row['title']} [{row['status']}]{desc_part}")
     finally:
         close_connection(conn)
