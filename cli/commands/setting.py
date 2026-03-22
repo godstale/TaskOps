@@ -1,9 +1,8 @@
 """Setting management command.
-설정 관리 커맨드. DB + SETTINGS.md 양방향 동기화.
+설정 관리 커맨드.
 """
-import os
 from datetime import datetime
-from .utils import get_db, get_project_dir
+from .utils import get_db
 from ..db.connection import close_connection
 
 
@@ -31,33 +30,6 @@ def register(subparsers):
     parser.set_defaults(func=lambda args: parser.print_help())
 
 
-def _regenerate_settings_md(conn, args):
-    """Regenerate SETTINGS.md from DB."""
-    project_dir = get_project_dir(args)
-    settings_path = os.path.join(project_dir, 'SETTINGS.md')
-
-    rows = conn.execute(
-        "SELECT key, value, description FROM settings ORDER BY key"
-    ).fetchall()
-
-    lines = []
-    lines.append("# Project Settings")
-    lines.append("")
-    lines.append("> Agent Behavior Guidelines")
-    lines.append("")
-
-    if rows:
-        for row in rows:
-            desc = f"  # {row['description']}" if row['description'] else ""
-            lines.append(f"- {row['key']}: {row['value']}{desc}")
-    else:
-        lines.append("(No settings)")
-
-    lines.append("")
-    with open(settings_path, 'w', encoding='utf-8') as f:
-        f.write('\n'.join(lines))
-
-
 def handle_set(args):
     conn = get_db(args)
     try:
@@ -70,7 +42,6 @@ def handle_set(args):
              args.value, args.desc, now)
         )
         conn.commit()
-        _regenerate_settings_md(conn, args)
         print(f"Setting set: {args.key} = {args.value}")
     finally:
         close_connection(conn)
@@ -115,7 +86,6 @@ def handle_delete(args):
         if result.rowcount == 0:
             print(f"Setting not found: {args.key}")
             raise SystemExit(1)
-        _regenerate_settings_md(conn, args)
         print(f"Setting deleted: {args.key}")
     finally:
         close_connection(conn)
