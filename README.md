@@ -29,9 +29,13 @@ cd my-project
 # Initialize TaskOps in your project
 python -m cli init --name "My Project" --prefix MYP --path .
 
-# Plan: create epics and tasks
-python -m cli epic create --title "Core Feature"
-python -m cli task create --parent MYP-E001 --title "Implement API"
+# Create or select a workflow (required before any ETS creation)
+python -m cli workflow create --title "My Plan"
+# → Workflow ID: MYP-W001
+
+# Plan: create epics and tasks (--workflow required)
+python -m cli epic create --workflow MYP-W001 --title "Core Feature"
+python -m cli task create --workflow MYP-W001 --parent MYP-E001 --title "Implement API"
 
 # Set workflow order
 python -m cli workflow set-order MYP-T001

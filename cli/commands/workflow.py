@@ -38,6 +38,7 @@ def register(subparsers):
 
     create = sub.add_parser('create', help='Create a new workflow')
     create.add_argument('--title', required=True, help='Workflow title')
+    create.add_argument('--description', default='', help='Workflow description (scope and intent)')
     create.add_argument('--source-file', dest='source_file', help='Original TODO file path (optional)')
     create.set_defaults(func=handle_create)
 
@@ -61,6 +62,20 @@ def register(subparsers):
     restart.add_argument('--clear-ops', action='store_true',
                          help='Also clear operation records for this workflow')
     restart.set_defaults(func=handle_restart)
+
+    exp = sub.add_parser('export', help='Export workflow to TODO.md format')
+    exp.add_argument('workflow_id', help='Workflow ID (e.g. TST-W001)')
+    exp.add_argument('--output', default=None,
+                     help='Output file path (default: TODO.md next to taskops.db)')
+    exp.set_defaults(func=handle_export)
+
+    report = sub.add_parser('report', help='Submit final completion report for a workflow')
+    report.add_argument('workflow_id', help='Workflow ID (e.g. PRJ-W001)')
+    report.add_argument('--summary', required=True,
+                        help='Short summary of what was accomplished')
+    report.add_argument('--details', default=None,
+                        help='Full report body (markdown supported)')
+    report.set_defaults(func=handle_report)
 
     parser.set_defaults(func=lambda args: parser.print_help())
 
@@ -240,12 +255,14 @@ def handle_create(args):
     conn = get_db(args)
     try:
         project_id = get_project_id(conn)
-        wf_id = next_workflow_id(conn, project_id)
+        wf_id = next_workflow_id(conn, project_id, args.title)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
-            "INSERT INTO workflows (id, project_id, title, source_file, created_at) "
-            "VALUES (?, ?, ?, ?, ?)",
-            (wf_id, project_id, args.title, getattr(args, 'source_file', None), now)
+            "INSERT INTO workflows (id, project_id, title, description, source_file, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (wf_id, project_id, args.title,
+             getattr(args, 'description', ''),
+             getattr(args, 'source_file', None), now)
         )
         conn.commit()
         print(f"Created workflow {wf_id}: {args.title}")
@@ -257,14 +274,15 @@ def handle_list(args):
     conn = get_db(args)
     try:
         rows = conn.execute(
-            "SELECT id, title, status, source_file FROM workflows ORDER BY id"
+            "SELECT id, title, status, description FROM workflows ORDER BY id"
         ).fetchall()
         if not rows:
             print("No workflows found.")
             return
         for row in rows:
-            src = f" (from: {row['source_file']})" if row['source_file'] else ""
-            print(f"  {row['id']}: {row['title']} [{row['status']}]{src}")
+            desc = row['description'] or ''
+            desc_part = f" - {desc[:60]}{'...' if len(desc) > 60 else ''}" if desc else ""
+            print(f"  {row['id']}: {row['title']} [{row['status']}]{desc_part}")
     finally:
         close_connection(conn)
 
@@ -327,6 +345,8 @@ def handle_import(args):
             raise SystemExit(1)
 
         project_id = get_project_id(conn)
+        from .utils import get_workflow_prefix
+        wf_short = get_workflow_prefix(args.workflow_id)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
 
         # Replace: delete all existing tasks in this workflow
@@ -342,7 +362,7 @@ def handle_import(args):
         seq = 1
 
         for epic_data in structure.get('epics', []):
-            epic_id = next_id(conn, project_id, 'E')
+            epic_id = next_id(conn, wf_short, 'E')
             conn.execute(
                 "INSERT INTO tasks "
                 "(id, project_id, type, title, description, status, "
@@ -355,7 +375,7 @@ def handle_import(args):
             output_lines.append(f"  Epic {epic_id}: {epic_data['title']}")
 
             for task_data in epic_data.get('tasks', []):
-                task_id = next_id(conn, project_id, 'T')
+                task_id = next_id(conn, wf_short, 'T')
                 conn.execute(
                     "INSERT INTO tasks "
                     "(id, project_id, type, title, description, status, "
@@ -370,15 +390,15 @@ def handle_import(args):
 
                 for res_data in task_data.get('resources', []):
                     conn.execute(
-                        "INSERT INTO resources (task_id, file_path, description, res_type, created_at) "
-                        "VALUES (?, ?, ?, ?, ?)",
+                        "INSERT INTO resources (task_id, file_path, description, res_type, workflow_id, created_at) "
+                        "VALUES (?, ?, ?, ?, ?, ?)",
                         (task_id, res_data['path'], res_data.get('desc', ''),
-                         res_data.get('type', 'reference'), now)
+                         res_data.get('type', 'reference'), args.workflow_id, now)
                     )
                     output_lines.append(f"      [resource] {res_data['path']} ({res_data.get('type', 'reference')})")
 
                 for st_data in task_data.get('tasks', task_data.get('subtasks', [])):
-                    st_id = next_id(conn, project_id, 'T')
+                    st_id = next_id(conn, wf_short, 'T')
                     conn.execute(
                         "INSERT INTO tasks "
                         "(id, project_id, type, title, description, status, "
@@ -393,10 +413,10 @@ def handle_import(args):
 
                     for res_data in st_data.get('resources', []):
                         conn.execute(
-                            "INSERT INTO resources (task_id, file_path, description, res_type, created_at) "
-                            "VALUES (?, ?, ?, ?, ?)",
+                            "INSERT INTO resources (task_id, file_path, description, res_type, workflow_id, created_at) "
+                            "VALUES (?, ?, ?, ?, ?, ?)",
                             (st_id, res_data['path'], res_data.get('desc', ''),
-                             res_data.get('type', 'reference'), now)
+                             res_data.get('type', 'reference'), args.workflow_id, now)
                         )
                         output_lines.append(f"        [resource] {res_data['path']} ({res_data.get('type', 'reference')})")
 
@@ -453,5 +473,95 @@ def handle_restart(args):
         conn.commit()
         print(f"Workflow {args.workflow_id} restarted: {reset_count} tasks reset to 'todo'")
         print("  Auto-checkpoint saved before restart.")
+    finally:
+        close_connection(conn)
+
+
+def handle_export(args):
+    import os
+    from datetime import datetime
+    from .utils import get_project_dir
+
+    conn = get_db(args)
+    try:
+        wf = conn.execute(
+            "SELECT id, title FROM workflows WHERE id=?", (args.workflow_id,)
+        ).fetchone()
+        if not wf:
+            print(f"Error: Workflow not found: {args.workflow_id}")
+            raise SystemExit(1)
+
+        out_path = os.path.abspath(args.output) if args.output else \
+            os.path.join(get_project_dir(args), 'TODO.md')
+
+        project = conn.execute(
+            "SELECT title FROM tasks WHERE type='project' LIMIT 1"
+        ).fetchone()
+        project_name = project['title'] if project else 'Project'
+
+        epics = conn.execute(
+            "SELECT id, title, status FROM tasks "
+            "WHERE type='epic' AND workflow_id=? ORDER BY id",
+            (args.workflow_id,)
+        ).fetchall()
+
+        lines = [
+            f"# {project_name}",
+            f"> Workflow: {wf['title']} ({wf['id']}) | "
+            f"Exported: {datetime.now().strftime('%Y-%m-%d %H:%M')}",
+            "",
+        ]
+
+        def append_tasks(parent_id, indent):
+            rows = conn.execute(
+                "SELECT id, title, status FROM tasks "
+                "WHERE type='task' AND parent_id=? ORDER BY seq_order, id",
+                (parent_id,)
+            ).fetchall()
+            for t in rows:
+                marker = 'x' if t['status'] == 'done' else ' '
+                lines.append(f"{'  ' * indent}- [{marker}] {t['title']} `{t['id']}`")
+                append_tasks(t['id'], indent + 1)
+
+        for epic in epics:
+            lines.append(f"### {epic['title']} `{epic['id']}`")
+            append_tasks(epic['id'], 0)
+            lines.append("")
+
+        lines.append("---")
+        lines.append("*Generated by TaskOps*")
+
+        with open(out_path, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines))
+
+        print(f"Exported {args.workflow_id} to {out_path}")
+    finally:
+        close_connection(conn)
+
+
+def handle_report(args):
+    from datetime import datetime
+
+    conn = get_db(args)
+    try:
+        wf = conn.execute(
+            "SELECT id, title, status FROM workflows WHERE id=?", (args.workflow_id,)
+        ).fetchone()
+        if not wf:
+            print(f"Workflow not found: {args.workflow_id}")
+            raise SystemExit(1)
+
+        report_body = args.summary
+        if args.details:
+            report_body = f"{args.summary}\n\n{args.details}"
+
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        conn.execute(
+            "UPDATE workflows SET status='completed', report=? WHERE id=?",
+            (report_body, args.workflow_id)
+        )
+        conn.commit()
+        print(f"Workflow {args.workflow_id} marked completed.")
+        print(f"Report saved: {args.summary}")
     finally:
         close_connection(conn)

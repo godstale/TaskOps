@@ -29,9 +29,13 @@ cd my-project
 # 프로젝트에 TaskOps 초기화
 python -m cli init --name "My Project" --prefix MYP --path .
 
-# 계획: Epic과 Task 생성
-python -m cli epic create --title "Core Feature"
-python -m cli task create --parent MYP-E001 --title "Implement API"
+# 워크플로우 생성 또는 선택 (ETS 생성 전 필수)
+python -m cli workflow create --title "My Plan"
+# → Workflow ID: MYP-W001
+
+# 계획: Epic과 Task 생성 (--workflow 필수)
+python -m cli epic create --workflow MYP-W001 --title "Core Feature"
+python -m cli task create --workflow MYP-W001 --parent MYP-E001 --title "Implement API"
 
 # 워크플로우 순서 설정
 python -m cli workflow set-order MYP-T001

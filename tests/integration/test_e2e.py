@@ -33,35 +33,39 @@ def test_full_project_lifecycle():
         assert r.returncode == 0, f"init failed: {r.stderr}"
         db = os.path.join(proj, 'taskops.db')
         assert os.path.exists(db)
-        assert os.path.exists(os.path.join(proj, 'TASKOPS.md'))
+        assert not os.path.exists(os.path.join(proj, 'TASKOPS.md'))  # DB-only principle (v0.2.6)
 
         # --- Phase 2: Planning ---
+        # Create workflow (required before ETS creation)
+        r = cli('--db', db, 'workflow', 'create', '--title', 'E2E Plan')
+        assert r.returncode == 0  # → E2E-EP
+
         # Create Epic
-        r = cli('--db', db, 'epic', 'create', '--title', 'Core Feature')
+        r = cli('--db', db, 'epic', 'create', '--workflow', 'E2E-EP', '--title', 'Core Feature')
         assert r.returncode == 0
 
         # Create Tasks under Epic
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-E001', '--title', 'Design API')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-EP', '--parent', 'EP-E001', '--title', 'Design API')
         assert r.returncode == 0
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-E001', '--title', 'Implement API')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-EP', '--parent', 'EP-E001', '--title', 'Implement API')
         assert r.returncode == 0
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-E001', '--title', 'Write Tests')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-EP', '--parent', 'EP-E001', '--title', 'Write Tests')
         assert r.returncode == 0
 
         # Create SubTask under Task
-        r = cli('--db', db, 'task', 'create', '--parent', 'E2E-T002', '--title', 'JWT Auth')
+        r = cli('--db', db, 'task', 'create', '--workflow', 'E2E-EP', '--parent', 'EP-T002', '--title', 'JWT Auth')
         assert r.returncode == 0
 
         # Create Objective
-        r = cli('--db', db, 'objective', 'create', '--title', 'MVP Done', '--milestone', 'Core features complete')
+        r = cli('--db', db, 'objective', 'create', '--workflow', 'E2E-EP', '--title', 'MVP Done', '--milestone', 'Core features complete')
         assert r.returncode == 0
 
         # --- Phase 3: Workflow Setup ---
-        r = cli('--db', db, 'workflow', 'set-order', 'E2E-T001', 'E2E-T002', 'E2E-T003')
+        r = cli('--db', db, 'workflow', 'set-order', 'EP-T001', 'EP-T002', 'EP-T003')
         assert r.returncode == 0
-        r = cli('--db', db, 'workflow', 'add-dep', 'E2E-T002', '--depends-on', 'E2E-T001')
+        r = cli('--db', db, 'workflow', 'add-dep', 'EP-T002', '--depends-on', 'EP-T001')
         assert r.returncode == 0
-        r = cli('--db', db, 'workflow', 'add-dep', 'E2E-T003', '--depends-on', 'E2E-T002')
+        r = cli('--db', db, 'workflow', 'add-dep', 'EP-T003', '--depends-on', 'EP-T002')
         assert r.returncode == 0
 
         # Show initial task structure
@@ -71,36 +75,36 @@ def test_full_project_lifecycle():
         # --- Phase 4: Execute Task 1 ---
         # Check next
         r = cli('--db', db, 'workflow', 'next')
-        assert 'E2E-T001' in r.stdout
+        assert 'EP-T001' in r.stdout
 
         # Start task
-        r = cli('--db', db, 'task', 'update', 'E2E-T001', '--status', 'in_progress')
+        r = cli('--db', db, 'task', 'update', 'EP-T001', '--status', 'in_progress')
         assert r.returncode == 0
-        r = cli('--db', db, 'op', 'start', 'E2E-T001', '--platform', 'claude_code')
+        r = cli('--db', db, 'op', 'start', 'EP-T001', '--platform', 'claude_code')
         assert r.returncode == 0
 
         # Record progress
-        r = cli('--db', db, 'op', 'progress', 'E2E-T001', '--summary', 'API schema defined')
+        r = cli('--db', db, 'op', 'progress', 'EP-T001', '--summary', 'API schema defined')
         assert r.returncode == 0
 
         # Complete task
-        r = cli('--db', db, 'task', 'update', 'E2E-T001', '--status', 'done')
+        r = cli('--db', db, 'task', 'update', 'EP-T001', '--status', 'done')
         assert r.returncode == 0
-        r = cli('--db', db, 'op', 'complete', 'E2E-T001', '--summary', 'Design done')
+        r = cli('--db', db, 'op', 'complete', 'EP-T001', '--summary', 'Design done')
         assert r.returncode == 0
 
         # --- Phase 5: Execute Task 2 (dependency check) ---
         r = cli('--db', db, 'workflow', 'next')
-        assert 'E2E-T002' in r.stdout
+        assert 'EP-T002' in r.stdout
 
-        r = cli('--db', db, 'task', 'update', 'E2E-T002', '--status', 'in_progress')
-        r = cli('--db', db, 'op', 'start', 'E2E-T002', '--platform', 'claude_code')
-        r = cli('--db', db, 'task', 'update', 'E2E-T002', '--status', 'done')
-        r = cli('--db', db, 'op', 'complete', 'E2E-T002', '--summary', 'Implementation done')
+        r = cli('--db', db, 'task', 'update', 'EP-T002', '--status', 'in_progress')
+        r = cli('--db', db, 'op', 'start', 'EP-T002', '--platform', 'claude_code')
+        r = cli('--db', db, 'task', 'update', 'EP-T002', '--status', 'done')
+        r = cli('--db', db, 'op', 'complete', 'EP-T002', '--summary', 'Implementation done')
         assert r.returncode == 0
 
         # --- Phase 6: Add resource ---
-        r = cli('--db', db, 'resource', 'add', 'E2E-T002',
+        r = cli('--db', db, 'resource', 'add', 'EP-T002',
                 '--path', './docs/spec.md', '--type', 'output', '--desc', 'API spec')
         assert r.returncode == 0
 
@@ -134,7 +138,7 @@ def test_full_project_lifecycle():
             assert op_count >= 5  # start + progress + complete for T001, start + complete for T002
 
             resource = conn.execute(
-                "SELECT * FROM resources WHERE task_id='E2E-T002'"
+                "SELECT * FROM resources WHERE task_id='EP-T002'"
             ).fetchone()
             assert resource is not None
 

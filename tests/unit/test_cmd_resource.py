@@ -23,15 +23,16 @@ def setup_project_with_task(tmpdir):
     pp = os.path.join(tmpdir, 'test-proj')
     run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
     db = os.path.join(pp, 'taskops.db')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 1')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
+    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A', '--workflow', 'TST-TW')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 1', '--workflow', 'TST-TW')
     return pp, db
 
 
 def test_resource_add():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_cli('--db', db, 'resource', 'add', 'TST-T001',
+        result = run_cli('--db', db, 'resource', 'add', 'TW-T001',
                          '--path', './docs/spec.md', '--type', 'input', '--desc', 'API spec')
         assert result.returncode == 0
         assert 'spec.md' in result.stdout
@@ -41,7 +42,7 @@ def test_resource_add():
 def test_resource_add_default_type():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        result = run_cli('--db', db, 'resource', 'add', 'TST-T001',
+        result = run_cli('--db', db, 'resource', 'add', 'TW-T001',
                          '--path', './readme.md')
         assert result.returncode == 0
         assert 'reference' in result.stdout
@@ -58,9 +59,9 @@ def test_resource_add_invalid_task():
 def test_resource_list_all():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'resource', 'add', 'TST-T001',
+        run_cli('--db', db, 'resource', 'add', 'TW-T001',
                 '--path', './a.md', '--type', 'input')
-        run_cli('--db', db, 'resource', 'add', 'TST-T001',
+        run_cli('--db', db, 'resource', 'add', 'TW-T001',
                 '--path', './b.md', '--type', 'output')
         result = run_cli('--db', db, 'resource', 'list')
         assert 'a.md' in result.stdout
@@ -70,10 +71,10 @@ def test_resource_list_all():
 def test_resource_list_filter_by_task():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 2')
-        run_cli('--db', db, 'resource', 'add', 'TST-T001', '--path', './a.md')
-        run_cli('--db', db, 'resource', 'add', 'TST-T002', '--path', './b.md')
-        result = run_cli('--db', db, 'resource', 'list', '--task', 'TST-T001')
+        run_cli('--db', db, 'task', 'create', '--parent', 'TW-E001', '--title', 'Task 2', '--workflow', 'TST-TW')
+        run_cli('--db', db, 'resource', 'add', 'TW-T001', '--path', './a.md')
+        run_cli('--db', db, 'resource', 'add', 'TW-T002', '--path', './b.md')
+        result = run_cli('--db', db, 'resource', 'list', '--task', 'TW-T001')
         assert 'a.md' in result.stdout
         assert 'b.md' not in result.stdout
 
@@ -81,9 +82,9 @@ def test_resource_list_filter_by_task():
 def test_resource_list_filter_by_type():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
-        run_cli('--db', db, 'resource', 'add', 'TST-T001',
+        run_cli('--db', db, 'resource', 'add', 'TW-T001',
                 '--path', './a.md', '--type', 'input')
-        run_cli('--db', db, 'resource', 'add', 'TST-T001',
+        run_cli('--db', db, 'resource', 'add', 'TW-T001',
                 '--path', './b.md', '--type', 'output')
         result = run_cli('--db', db, 'resource', 'list', '--type', 'input')
         assert 'a.md' in result.stdout
@@ -101,7 +102,7 @@ def test_resource_add_all_types():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp, db = setup_project_with_task(tmpdir)
         for t in ['input', 'output', 'reference', 'intermediate']:
-            result = run_cli('--db', db, 'resource', 'add', 'TST-T001',
+            result = run_cli('--db', db, 'resource', 'add', 'TW-T001',
                              '--path', f'./{t}.md', '--type', t)
             assert result.returncode == 0
 

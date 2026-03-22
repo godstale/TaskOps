@@ -2,7 +2,7 @@
 Objective 관리 커맨드 (CRUD). Milestone + date-based events.
 """
 from datetime import datetime
-from .utils import get_db, get_project_id, next_id
+from .utils import get_db, get_project_id, next_id, get_workflow_prefix
 from ..db.connection import close_connection
 
 
@@ -14,7 +14,7 @@ def register(subparsers):
     create.add_argument('--title', required=True, help='Objective title')
     create.add_argument('--milestone', help='Milestone target description')
     create.add_argument('--due-date', help='Due date (YYYY-MM-DD)')
-    create.add_argument('--workflow', default=None, help='Workflow ID to associate with')
+    create.add_argument('--workflow', required=True, help='Workflow ID to associate with')
     create.set_defaults(func=handle_create)
 
     lst = sub.add_parser('list', help='List all objectives')
@@ -40,13 +40,14 @@ def handle_create(args):
     conn = get_db(args)
     try:
         project_id = get_project_id(conn)
-        obj_id = next_id(conn, project_id, 'O')
+        wf_short = get_workflow_prefix(args.workflow)
+        obj_id = next_id(conn, wf_short, 'O')
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
 
         milestone = getattr(args, 'milestone', None)
         due_date = getattr(args, 'due_date', None)
 
-        workflow_id = getattr(args, 'workflow', None)
+        workflow_id = args.workflow
         conn.execute(
             "INSERT INTO tasks (id, project_id, type, title, status, parent_id, "
             "milestone_target, due_date, workflow_id, created_at, updated_at) "

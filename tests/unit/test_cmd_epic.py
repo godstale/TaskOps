@@ -23,6 +23,8 @@ def setup_project(tmpdir):
     """Initialize a project and return the path."""
     project_path = os.path.join(tmpdir, 'test-proj')
     run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', project_path)
+    db = os.path.join(project_path, 'taskops.db')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
     return project_path
 
 
@@ -30,13 +32,13 @@ def test_epic_create():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp = setup_project(tmpdir)
         result = run_cli('--db', os.path.join(pp, 'taskops.db'),
-                         'epic', 'create', '--title', 'Auth System')
+                         'epic', 'create', '--title', 'Auth System', '--workflow', 'TST-TW')
         assert result.returncode == 0
-        assert 'TST-E001' in result.stdout
+        assert 'TW-E001' in result.stdout
 
         conn = sqlite3.connect(os.path.join(pp, 'taskops.db'))
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT * FROM tasks WHERE id='TST-E001'").fetchone()
+        row = conn.execute("SELECT * FROM tasks WHERE id='TW-E001'").fetchone()
         assert row['type'] == 'epic'
         assert row['title'] == 'Auth System'
         assert row['status'] == 'todo'
@@ -47,22 +49,22 @@ def test_epic_create_sequential_ids():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp = setup_project(tmpdir)
         db = os.path.join(pp, 'taskops.db')
-        run_cli('--db', db, 'epic', 'create', '--title', 'Epic 1')
-        run_cli('--db', db, 'epic', 'create', '--title', 'Epic 2')
-        result = run_cli('--db', db, 'epic', 'create', '--title', 'Epic 3')
-        assert 'TST-E003' in result.stdout
+        run_cli('--db', db, 'epic', 'create', '--title', 'Epic 1', '--workflow', 'TST-TW')
+        run_cli('--db', db, 'epic', 'create', '--title', 'Epic 2', '--workflow', 'TST-TW')
+        result = run_cli('--db', db, 'epic', 'create', '--title', 'Epic 3', '--workflow', 'TST-TW')
+        assert 'TW-E003' in result.stdout
 
 
 def test_epic_list():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp = setup_project(tmpdir)
         db = os.path.join(pp, 'taskops.db')
-        run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
-        run_cli('--db', db, 'epic', 'create', '--title', 'Epic B')
+        run_cli('--db', db, 'epic', 'create', '--title', 'Epic A', '--workflow', 'TST-TW')
+        run_cli('--db', db, 'epic', 'create', '--title', 'Epic B', '--workflow', 'TST-TW')
         result = run_cli('--db', db, 'epic', 'list')
-        assert 'TST-E001' in result.stdout
+        assert 'TW-E001' in result.stdout
         assert 'Epic A' in result.stdout
-        assert 'TST-E002' in result.stdout
+        assert 'TW-E002' in result.stdout
         assert 'Epic B' in result.stdout
 
 
@@ -70,8 +72,8 @@ def test_epic_show():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp = setup_project(tmpdir)
         db = os.path.join(pp, 'taskops.db')
-        run_cli('--db', db, 'epic', 'create', '--title', 'My Epic', '--description', 'Detailed desc')
-        result = run_cli('--db', db, 'epic', 'show', 'TST-E001')
+        run_cli('--db', db, 'epic', 'create', '--title', 'My Epic', '--description', 'Detailed desc', '--workflow', 'TST-TW')
+        result = run_cli('--db', db, 'epic', 'show', 'TW-E001')
         assert 'My Epic' in result.stdout
         assert 'Detailed desc' in result.stdout
 
@@ -88,13 +90,13 @@ def test_epic_update_status():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp = setup_project(tmpdir)
         db = os.path.join(pp, 'taskops.db')
-        run_cli('--db', db, 'epic', 'create', '--title', 'My Epic')
-        result = run_cli('--db', db, 'epic', 'update', 'TST-E001', '--status', 'in_progress')
+        run_cli('--db', db, 'epic', 'create', '--title', 'My Epic', '--workflow', 'TST-TW')
+        result = run_cli('--db', db, 'epic', 'update', 'TW-E001', '--status', 'in_progress')
         assert result.returncode == 0
 
         conn = sqlite3.connect(os.path.join(pp, 'taskops.db'))
         conn.row_factory = sqlite3.Row
-        row = conn.execute("SELECT status FROM tasks WHERE id='TST-E001'").fetchone()
+        row = conn.execute("SELECT status FROM tasks WHERE id='TW-E001'").fetchone()
         assert row['status'] == 'in_progress'
         conn.close()
 
@@ -103,8 +105,8 @@ def test_epic_delete():
     with tempfile.TemporaryDirectory() as tmpdir:
         pp = setup_project(tmpdir)
         db = os.path.join(pp, 'taskops.db')
-        run_cli('--db', db, 'epic', 'create', '--title', 'My Epic')
-        result = run_cli('--db', db, 'epic', 'delete', 'TST-E001')
+        run_cli('--db', db, 'epic', 'create', '--title', 'My Epic', '--workflow', 'TST-TW')
+        result = run_cli('--db', db, 'epic', 'delete', 'TW-E001')
         assert result.returncode == 0
         assert 'Deleted' in result.stdout
 
