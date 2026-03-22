@@ -12,6 +12,65 @@ def test_schema_version_exists():
     assert SCHEMA_VERSION >= 1
 
 
+def test_schema_version_is_6():
+    assert SCHEMA_VERSION == 6
+
+
+def test_workflows_table_has_description_column():
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        create_tables(conn)
+        cols = {r['name'] for r in conn.execute("PRAGMA table_info(workflows)").fetchall()}
+        assert 'description' in cols
+        conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_migrate_v5_to_v6_adds_description():
+    """Existing v5 DB gets description column after migration."""
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        create_tables(conn)
+        # Simulate v5 state: drop description column by recreating table without it
+        conn.execute("ALTER TABLE workflows RENAME TO workflows_old")
+        conn.execute(
+            "CREATE TABLE workflows (id TEXT PRIMARY KEY, project_id TEXT NOT NULL, "
+            "title TEXT NOT NULL, source_file TEXT, status TEXT NOT NULL DEFAULT 'active' "
+            "CHECK(status IN ('active','completed','archived')), report TEXT, "
+            "created_at TEXT NOT NULL DEFAULT (datetime('now')))"
+        )
+        conn.execute(
+            "INSERT INTO workflows SELECT id, project_id, title, source_file, status, report, created_at "
+            "FROM workflows_old"
+        )
+        conn.execute("DROP TABLE workflows_old")
+        conn.execute(
+            "INSERT OR REPLACE INTO settings (workflow_id, key, value, description, updated_at) "
+            "VALUES ('', '__schema_version', '5', 'DB schema version', datetime('now'))"
+        )
+        conn.commit()
+
+        from cli.db.schema import migrate_schema
+        migrate_schema(conn)
+
+        cols = {r['name'] for r in conn.execute("PRAGMA table_info(workflows)").fetchall()}
+        assert 'description' in cols
+        ver = conn.execute(
+            "SELECT value FROM settings WHERE key='__schema_version' AND workflow_id=''"
+        ).fetchone()
+        assert ver['value'] == '6'
+        conn.close()
+    finally:
+        os.unlink(db_path)
+
+
 def test_create_tables_creates_all_tables():
     with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
         db_path = f.name
@@ -77,9 +136,9 @@ def test_tasks_table_constraints():
         conn.execute("PRAGMA foreign_keys=ON;")
         create_tables(conn)
 
-        # Valid insert
+        # Valid insert (workflow_id required for non-project types)
         conn.execute(
-            "INSERT INTO tasks (id, project_id, type, title) VALUES ('T1', 'PRJ', 'task', 'Test')"
+            "INSERT INTO tasks (id, project_id, type, title, workflow_id) VALUES ('T1', 'PRJ', 'task', 'Test', 'PRJ-W001')"
         )
         conn.commit()
 
