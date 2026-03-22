@@ -53,18 +53,23 @@ See [docs/usage/quickstart.md](docs/usage/quickstart.md) for the full guide.
 
 ## Monitoring with TaskBoard
 
-[TaskBoard](https://github.com/godstale/TaskBoard) is a companion GUI that reads the TaskOps SQLite database in real-time and displays your project status visually. It runs as a **terminal UI (TUI)** or a **desktop Electron app**, and automatically refreshes whenever the DB changes.
+TaskBoard is a companion GUI that reads the TaskOps SQLite database in real-time and displays your project status visually. It automatically refreshes whenever the DB changes, and is available in two separate apps:
+
+- **[TaskBoard-CLI](https://github.com/godstale/TaskBoard-CLI)** — Terminal UI (TUI)
+- **[TaskBoard-App](https://github.com/godstale/TaskBoard-App)** — Electron desktop app
 
 ```bash
-git clone https://github.com/godstale/TaskBoard.git
-cd TaskBoard
-pnpm install
-
 # TUI (terminal)
-pnpm --filter @taskboard/tui dev -- --path /path/to/your-project
+git clone https://github.com/godstale/TaskBoard-CLI.git
+cd TaskBoard-CLI
+pnpm install
+pnpm dev -- --path /path/to/your-project
 
 # Electron (desktop)
-pnpm --filter @taskboard/electron dev
+git clone https://github.com/godstale/TaskBoard-App.git
+cd TaskBoard-App
+pnpm install
+pnpm dev
 ```
 
 TaskBoard is read-only — it never writes to the TaskOps DB. Use it to monitor progress in real-time while the AI Agent works.
