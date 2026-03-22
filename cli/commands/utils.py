@@ -69,19 +69,49 @@ def next_id(conn, prefix, type_char):
     return f"{prefix}-{type_char}{next_num:03d}"
 
 
-def next_workflow_id(conn, prefix):
-    """Generate next sequential workflow ID.
-    다음 순차 Workflow ID 생성. e.g. PRJ-W001, PRJ-W002
+def next_workflow_id(conn, project_prefix, title):
+    """Generate workflow ID using title-derived short string.
+    제목 기반 단축 문자열로 워크플로우 ID 생성.
     """
-    pattern = f"{prefix}-W%"
-    row = conn.execute(
-        "SELECT id FROM workflows WHERE id LIKE ? ORDER BY id DESC LIMIT 1",
-        (pattern,)
-    ).fetchone()
-    if row is None:
-        return f"{prefix}-W001"
-    num_str = row['id'].split('-W')[1]
-    return f"{prefix}-W{int(num_str) + 1:03d}"
+    short = generate_workflow_short(title, conn)
+    return f"{project_prefix}-{short}"
+
+
+def generate_workflow_short(title: str, conn) -> str:
+    """Derive a unique 2-4 char uppercase ASCII short string from a workflow title.
+    워크플로우 제목에서 고유한 2-4자 대문자 ASCII 단축 문자열 생성.
+    """
+    import re
+    words = re.split(r'[^A-Za-z0-9]+', title)
+    base = ''.join(w[0] for w in words if w and w[0].isupper() and ord(w[0]) < 128)
+    while len(base) < 2:
+        base += 'W'
+    base = base[:4]
+
+    existing = set()
+    rows = conn.execute("SELECT id FROM workflows").fetchall()
+    for row in rows:
+        wf_id = row['id'] if isinstance(row, dict) else row[0]
+        if '-' in wf_id:
+            existing.add(wf_id.split('-', 1)[1])
+
+    if base not in existing:
+        return base
+
+    stem = base[:3]
+    for i in range(1, 100):
+        candidate = f"{stem}{i}"
+        if candidate not in existing:
+            return candidate
+    return base  # unreachable in practice
+
+
+def get_workflow_prefix(workflow_id: str) -> str:
+    """Extract short prefix from a workflow ID.
+    워크플로우 ID에서 단축 프리픽스 추출.
+    'SMR-RTS1' -> 'RTS1', 'PRJ-W001' -> 'W001'
+    """
+    return workflow_id.split('-', 1)[1]
 
 
 def get_project_dir(args):

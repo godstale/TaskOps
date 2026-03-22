@@ -12,6 +12,54 @@ PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(_
 ENV = {**os.environ, 'PYTHONIOENCODING': 'utf-8'}
 
 
+def test_generate_workflow_short_basic():
+    import sys
+    sys.path.insert(0, PROJECT_ROOT)
+    from cli.commands.utils import generate_workflow_short
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE workflows (id TEXT PRIMARY KEY)")
+        assert generate_workflow_short("Real Time Sync", conn) == "RTS"
+        assert generate_workflow_short("API Server Refactor", conn) == "ASR"
+        assert generate_workflow_short("Build and Deploy Pipeline", conn) == "BDP"
+        assert generate_workflow_short("Go", conn) == "GW"
+        conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_generate_workflow_short_collision():
+    import sys
+    sys.path.insert(0, PROJECT_ROOT)
+    from cli.commands.utils import generate_workflow_short
+    with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as f:
+        db_path = f.name
+    try:
+        conn = sqlite3.connect(db_path)
+        conn.row_factory = sqlite3.Row
+        conn.execute("CREATE TABLE workflows (id TEXT PRIMARY KEY)")
+        conn.execute("INSERT INTO workflows VALUES ('PRJ-RTS')")
+        conn.commit()
+        result = generate_workflow_short("Real Time Sync", conn)
+        assert result == "RTS1"
+        conn.close()
+    finally:
+        os.unlink(db_path)
+
+
+def test_get_workflow_prefix():
+    import sys
+    sys.path.insert(0, PROJECT_ROOT)
+    from cli.commands.utils import get_workflow_prefix
+    assert get_workflow_prefix("SMR-RTS") == "RTS"
+    assert get_workflow_prefix("SMR-RTS1") == "RTS1"
+    assert get_workflow_prefix("PRJ-TW") == "TW"
+    assert get_workflow_prefix("PRJ-W001") == "W001"
+
+
 def run_cli(*args):
     return subprocess.run(
         [sys.executable, '-m', 'cli', *args],
@@ -21,14 +69,15 @@ def run_cli(*args):
 
 
 def setup_project_with_tasks(tmpdir):
-    """Init project, create epic, create 3 tasks."""
+    """Init project, create workflow, epic, and 3 tasks."""
     pp = os.path.join(tmpdir, 'test-proj')
     run_cli('init', '--name', 'Test', '--prefix', 'TST', '--path', pp)
     db = os.path.join(pp, 'taskops.db')
-    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 1')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 2')
-    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 3')
+    run_cli('--db', db, 'workflow', 'create', '--title', 'Test Workflow')
+    run_cli('--db', db, 'epic', 'create', '--title', 'Epic A', '--workflow', 'TST-W001')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 1', '--workflow', 'TST-W001')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 2', '--workflow', 'TST-W001')
+    run_cli('--db', db, 'task', 'create', '--parent', 'TST-E001', '--title', 'Task 3', '--workflow', 'TST-W001')
     return pp, db
 
 
