@@ -27,8 +27,15 @@ fi
 
 ACTIVE_TASK=$(python -m cli --db "$DB_PATH" workflow current 2>/dev/null)
 
+TOOL_NAME="${CLAUDE_TOOL_NAME:-unknown}"
+
 if [ -n "$ACTIVE_TASK" ]; then
-    TOOL_NAME="${CLAUDE_TOOL_NAME:-unknown}"
     python -m cli --db "$DB_PATH" op progress "$ACTIVE_TASK" \
         --summary "Tool used: $TOOL_NAME" 2>/dev/null
 fi
+
+python -m cli --db "$DB_PATH" monitor record \
+    --event tool_use \
+    --tool "$TOOL_NAME" \
+    --task "${ACTIVE_TASK:-}" \
+    --source hook 2>/dev/null

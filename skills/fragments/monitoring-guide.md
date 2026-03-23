@@ -64,6 +64,53 @@ python -m cli op log --task <TASK_ID>
 python -m cli op log --workflow <WORKFLOW_ID>
 ```
 
+## Agent Activity Monitoring / 에이전트 활동 모니터링
+
+Automatically tracks tool usage, thinking, and subagent events per session.
+훅을 통해 도구 사용, 사고, 서브에이전트 이벤트를 세션 단위로 자동 추적합니다.
+
+### How it works / 동작 방식
+
+- `on_tool_use.sh` hook records each tool call automatically → no manual action needed
+- `on_session_end.sh` hook parses the JSONL session file at session end (register as `Stop` hook)
+- `monitor record` is called by hooks; **do not call it directly**
+
+### CLI Commands / CLI 명령어
+
+```bash
+# Parse the latest JSONL session file and import events into DB
+python -m cli monitor parse --auto
+
+# Parse a specific session
+python -m cli monitor parse --session <session-hash>
+
+# Associate parsed events with a workflow
+python -m cli monitor parse --auto --workflow {WORKFLOW_ID}
+
+# Tool usage report (all workflows)
+python -m cli monitor report
+
+# Tool usage report scoped to a workflow
+python -m cli monitor report --workflow {WORKFLOW_ID}
+
+# Session summary (most recent session)
+python -m cli monitor summary
+
+# Session summary for a specific session
+python -m cli monitor summary --session <session-hash>
+```
+
+### Report output columns / 리포트 출력 컬럼
+
+| Column | Description |
+|--------|-------------|
+| Tool   | Tool name |
+| Calls  | Total call count |
+| Avg ms | Average duration (JSONL source only) |
+| %      | Percentage of total calls |
+
+---
+
 ## Best Practices / 모범 사례
 
 1. Always `op start` before beginning work on a task

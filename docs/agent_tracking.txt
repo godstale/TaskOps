@@ -1,0 +1,58 @@
+## Claude Code - 파일시스템 데이터 전체 지도
+
+1. Session JSONL — 가장 핵심적인 데이터 소스
+
+Claude Code는 모든 이벤트(메시지, 툴 호출, 상태 업데이트)를 발생 즉시 디스크에 기록합니다. JSONL 형식이며 한 줄이 한 이벤트입니다.
+```
+~/.claude/projects/<project-hash>/
+├── <session-id>.jsonl        ← 모든 tool_use, tool_result, thinking
+├── sessions-index.json       ← 세션 메타데이터 (요약, 토큰 수, git branch)
+└── memory/
+    ├── MEMORY.md             ← Auto-memory 진입점
+    ├── debugging.md
+    └── api-conventions.md
+```
+
+2. 추가 디렉토리 — 덜 알려진 소스들
+
+Claude Code는 아래 디렉토리들도 유지합니다:
+
+todos/ : ~/.claude/todos/{session-id}-*.json — TodoWrite 툴이 생성하는 작업 목록 (작업 상태, 우선순위 포함)
+plans/ : Plan Mode가 생성한 실행 계획
+shell-snapshots/ : 쉘 세션 상태 스냅샷 (현재 디렉토리, 환경변수)
+debug/ : 에러 스택과 실행 추적 로그
+telemetry/ : 기능 사용 빈도 등 익명 텔레메트리
+
+3. 글로벌 히스토리
+
+~/.claude/history.jsonl은 글로벌 인덱스로, 모든 프로젝트에 걸쳐 전송한 모든 프롬프트의 텍스트, 타임스탬프, 프로젝트 경로, 세션 ID를 담고 있습니다.
+
+4. Auto Memory 파일 감시
+
+각 프로젝트는 ~/.claude/projects/<project>/memory/ 경로에 자체 메모리 디렉토리를 가집니다. MEMORY.md는 간결한 인덱스로 매 세션에 로드되며, 주제별 파일(debugging.md, api-conventions.md 등)이 함께 존재합니다.
+
+
+## Gemini CLI - 파일시스템 데이터 지도
+
+1. Session JSON
+
+세션은 ~/.gemini/tmp/<project_hash>/chats/에 저장됩니다. 저장 내용은 프롬프트와 모델 응답, 모든 툴 실행(입력/출력), 토큰 사용 통계, 그리고 assistant의 thinking 및 reasoning 요약(이용 가능한 경우)입니다.
+파일명 패턴: session-2026-03-22T10-45-3b44bc68.json
+
+2. OpenTelemetry 기반 텔레메트리
+
+Gemini CLI는 OpenTelemetry 기반 관측성(observability)을 지원하며 Google Cloud Logging/Monitoring을 백엔드로 사용할 수 있습니다.
+
+로컬 수집 방법:
+
+gemini --telemetry-target=local --telemetry-outfile=taskops_telemetry.json
+
+
+
+
+
+
+
+
+
+

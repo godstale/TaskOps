@@ -8,11 +8,11 @@
 
 ```bash
 python -m cli query show --workflow {PREFIX}-W001
-python -m cli setting list
+python -m cli setting list --workflow {PREFIX}-W001
 ```
 
 Review critically:
-- Are all required settings configured? (check `setting list`)
+- Are all required settings configured? (check `setting list --workflow {PREFIX}-W001`)
 - Are there tasks with unclear done-conditions?
 - Are there external dependencies that must be resolved first?
 

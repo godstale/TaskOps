@@ -25,17 +25,17 @@ Settings are NOT for task output data. Use `resource add` for artifacts.
 ## Commands
 
 ```bash
-# Register a dependency or configuration value
-python -m cli --db $TASKOPS_DB setting set <key> <value> --desc "<description>"
+# Register a dependency or configuration value (--workflow is required)
+python -m cli --db $TASKOPS_DB setting set <key> <value> --workflow <W-ID> --desc "<description>"
 
-# Read a setting
-python -m cli --db $TASKOPS_DB setting get <key>
+# Read a setting (--workflow is required)
+python -m cli --db $TASKOPS_DB setting get <key> --workflow <W-ID>
 
-# List all settings
-python -m cli --db $TASKOPS_DB setting list
+# List all settings (--workflow optional, omit to show all)
+python -m cli --db $TASKOPS_DB setting list [--workflow <W-ID>]
 
-# Remove a setting
-python -m cli --db $TASKOPS_DB setting delete <key>
+# Remove a setting (--workflow is required)
+python -m cli --db $TASKOPS_DB setting delete <key> --workflow <W-ID>
 ```
 
 ## Pattern: Pre-Execution Dependency Check
@@ -43,7 +43,7 @@ python -m cli --db $TASKOPS_DB setting delete <key>
 Before starting execution, verify required dependencies are ready:
 
 ```bash
-python -m cli --db $TASKOPS_DB setting list
+python -m cli --db $TASKOPS_DB setting list --workflow <W-ID>
 ```
 
 If a required tool or service is not yet available, block execution:
@@ -51,11 +51,11 @@ If a required tool or service is not yet available, block execution:
 ```bash
 # Record as unresolved — do not start dependent tasks
 python -m cli --db $TASKOPS_DB setting set stripe_api_key_configured false \
-    --desc "Required for T005 (Payment processing). Get key from team Slack."
+    --workflow <W-ID> --desc "Required for T005 (Payment processing). Get key from team Slack."
 ```
 
 Update when resolved:
 ```bash
 python -m cli --db $TASKOPS_DB setting set stripe_api_key_configured true \
-    --desc "Configured 2026-03-22. Stored in .env"
+    --workflow <W-ID> --desc "Configured 2026-03-22. Stored in .env"
 ```

@@ -98,12 +98,9 @@ Before execution, register any required tools, services, or APIs as settings.
 **Always specify `--workflow` so settings are scoped to this plan:**
 
 ```bash
-# Per-workflow settings (recommended)
+# --workflow is required for all setting commands
 python -m cli setting set docker_required true --workflow PRJ-PT --desc "Docker CLI needed for build tasks"
 python -m cli setting set openai_api_configured false --workflow PRJ-PT --desc "Needs API key before Task T003"
-
-# Global settings (shared across all workflows)
-python -m cli setting set project_language python --desc "Primary language"
 ```
 
 Verify:
@@ -117,7 +114,7 @@ See `@skills/fragments/setting-guide.md` for full setting reference.
 
 ```bash
 python -m cli query show --workflow PRJ-PT
-python -m cli setting list
+python -m cli setting list --workflow PRJ-PT
 ```
 
 ## Planning Gate

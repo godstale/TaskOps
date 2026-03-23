@@ -29,6 +29,7 @@ def build_parser():
     from .commands.setting import register as register_setting
     from .commands.project import register as register_project
     from .commands.plan import register as register_plan
+    from .commands.monitor import register as register_monitor
 
     register_init(subparsers)
     register_epic(subparsers)
@@ -41,6 +42,7 @@ def build_parser():
     register_setting(subparsers)
     register_project(subparsers)
     register_plan(subparsers)
+    register_monitor(subparsers)
 
     return parser
 

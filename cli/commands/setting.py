@@ -14,12 +14,12 @@ def register(subparsers):
     s.add_argument('key', help='Setting key')
     s.add_argument('value', help='Setting value')
     s.add_argument('--desc', default='', help='Description')
-    s.add_argument('--workflow', default='', help='Workflow ID (empty = global)')
+    s.add_argument('--workflow', required=True, help='Workflow ID (required)')
     s.set_defaults(func=handle_set)
 
     g = sub.add_parser('get', help='Get a setting value')
     g.add_argument('key', help='Setting key')
-    g.add_argument('--workflow', default='', help='Workflow ID (empty = global)')
+    g.add_argument('--workflow', required=True, help='Workflow ID (required)')
     g.set_defaults(func=handle_get)
 
     lst = sub.add_parser('list', help='List all settings')
@@ -29,7 +29,7 @@ def register(subparsers):
 
     d = sub.add_parser('delete', help='Delete a setting')
     d.add_argument('key', help='Setting key')
-    d.add_argument('--workflow', default='', help='Workflow ID (empty = global)')
+    d.add_argument('--workflow', required=True, help='Workflow ID (required)')
     d.set_defaults(func=handle_delete)
 
     parser.set_defaults(func=lambda args: parser.print_help())
@@ -39,7 +39,7 @@ def handle_set(args):
     conn = get_db(args)
     try:
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
-        wf = getattr(args, 'workflow', '') or ''
+        wf = args.workflow
         conn.execute(
             "INSERT INTO settings (workflow_id, key, value, description, updated_at) "
             "VALUES (?, ?, ?, ?, ?) "
@@ -48,8 +48,7 @@ def handle_set(args):
              args.value, args.desc, now)
         )
         conn.commit()
-        scope = f" [workflow: {wf}]" if wf else " [global]"
-        print(f"Setting set: {args.key} = {args.value}{scope}")
+        print(f"Setting set: {args.key} = {args.value} [workflow: {wf}]")
     finally:
         close_connection(conn)
 
@@ -57,7 +56,7 @@ def handle_set(args):
 def handle_get(args):
     conn = get_db(args)
     try:
-        wf = getattr(args, 'workflow', '') or ''
+        wf = args.workflow
         row = conn.execute(
             "SELECT value, description FROM settings WHERE workflow_id=? AND key=?",
             (wf, args.key)
@@ -100,7 +99,7 @@ def handle_list(args):
 def handle_delete(args):
     conn = get_db(args)
     try:
-        wf = getattr(args, 'workflow', '') or ''
+        wf = args.workflow
         result = conn.execute(
             "DELETE FROM settings WHERE workflow_id=? AND key=?", (wf, args.key)
         )
@@ -108,7 +107,6 @@ def handle_delete(args):
         if result.rowcount == 0:
             print(f"Setting not found: {args.key}")
             raise SystemExit(1)
-        scope = f" [workflow: {wf}]" if wf else " [global]"
-        print(f"Setting deleted: {args.key}{scope}")
+        print(f"Setting deleted: {args.key} [workflow: {wf}]")
     finally:
         close_connection(conn)

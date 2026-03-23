@@ -2,9 +2,15 @@
 name: taskops
 description: >
   Use when a project plan or implementation spec has been finalized and execution is about to begin,
-  a user presents a multi-step project and asks you to implement or build it,
   or a session starts on a project that already has a taskops.db.
-  INVOKE AUTOMATICALLY — without waiting for user instruction.
+
+  During execution:
+  - Report all detailed operations (skill calls, sub-agent dispatches, tool uses, MCP/plugin calls,
+    and thinking steps) to TaskOps so they are visible in the monitoring dashboard.
+  - Signal task start and task completion to keep Task statuses up to date in the DB.
+  - When all work is finished, register output artifacts, memory files, and system files as
+    resources in TaskOps so future sessions can locate and reuse them.
+
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -234,6 +240,46 @@ pnpm --filter @taskboard/tui dev -- --path /path/to/project-root
 
 Work through tasks following the workflow order.
 
+### Execution Reporting Obligations
+
+These three behaviors are **required** during every execution session:
+
+**1. Report sub-operations to TaskOps**
+
+Whenever you invoke a skill, dispatch a sub-agent, call a tool, use an MCP/plugin, or take a
+significant thinking/planning step, record it as a progress operation so it appears in monitoring:
+
+```bash
+python -m cli op progress <TASK_ID> --summary "Invoked sub-agent: code-reviewer for AMP-T003"
+python -m cli op progress <TASK_ID> --summary "Tool: Write — created src/api/auth.py"
+python -m cli op progress <TASK_ID> --summary "MCP: playwright — navigated to /login for E2E test"
+```
+
+With `on_tool_use.sh` configured, Edit/Write/Bash tool uses are recorded automatically.
+For skill dispatches, sub-agents, and MCP calls you must record progress **manually**.
+
+**2. Signal task start and completion**
+
+Always update Task status at the boundaries of each task (see commands below).
+Never leave a task in `todo` while actively working on it, or in `in_progress` after it finishes.
+
+**3. Register artifacts when all work is done**
+
+After completing the final task in a session, register every meaningful output:
+
+```bash
+# Output files produced
+python -m cli resource add <TASK_ID> --path ./path/to/output --type output --desc "description"
+
+# Memory files written during the session
+python -m cli resource add <TASK_ID> --path ./.claude/memory/feedback_xyz.md --type output --desc "memory: feedback on testing approach"
+
+# System/config files modified or created
+python -m cli resource add <TASK_ID> --path ./.claude/settings.json --type output --desc "system: hooks configuration"
+```
+
+---
+
 ### Start a Task
 
 ```bash
@@ -313,9 +359,9 @@ python -m cli resource list --task AMP-T001
 ### Manage Settings
 
 ```bash
-python -m cli setting set commit_style "conventional" --desc "Commit message style"
-python -m cli setting get commit_style
-python -m cli setting list
+python -m cli setting set commit_style "conventional" --workflow <W-ID> --desc "Commit message style"
+python -m cli setting get commit_style --workflow <W-ID>
+python -m cli setting list --workflow <W-ID>
 ```
 
 ---

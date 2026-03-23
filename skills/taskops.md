@@ -248,10 +248,10 @@ python -m cli workflow next --workflow {PREFIX}-{SHORT}
 | `query show [--workflow <W-ID>]` | Full task tree view |
 | `query status [--workflow <W-ID>]` | Progress summary |
 | `query tasks [--status] [--workflow <W-ID>]` | Filtered task list |
-| `setting set <key> <val> [--workflow <W-ID>] [--desc '...']` | Set per-workflow or global setting |
-| `setting get <key> [--workflow <W-ID>]` | Get setting value |
+| `setting set <key> <val> --workflow <W-ID> [--desc '...']` | Set workflow-scoped setting (**--workflow required**) |
+| `setting get <key> --workflow <W-ID>` | Get setting value (**--workflow required**) |
 | `setting list [--workflow <W-ID>]` | List settings (all if --workflow omitted) |
-| `setting delete <key> [--workflow <W-ID>]` | Delete setting |
+| `setting delete <key> --workflow <W-ID>` | Delete setting (**--workflow required**) |
 | `project checkpoint [--note]` | Create status snapshot |
 | `project checkpoint list` | List snapshots |
 | `project rollback --checkpoint <id>` | Restore task statuses from snapshot |
