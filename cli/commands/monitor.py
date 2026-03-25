@@ -93,8 +93,16 @@ def handle_parse(args):
 
     try:
         conn = get_db(args)
+
+        # Auto-detect workflow when --auto is used and --workflow is not specified
+        workflow = getattr(args, 'workflow', None)
+        if not workflow and getattr(args, 'auto', False):
+            workflow = _detect_current_workflow(conn)
+            if workflow:
+                print(f"[monitor parse] Auto-detected workflow: {workflow}")
+
         events = _parse_jsonl(jsonl_path)
-        inserted = _import_events(conn, events, args.workflow)
+        inserted = _import_events(conn, events, workflow)
         conn.commit()
         print(f"[monitor parse] Imported {inserted} events from {len(events)} parsed.")
     except Exception as e:
@@ -104,6 +112,25 @@ def handle_parse(args):
             close_connection(conn)
         except Exception:
             pass
+
+
+def _detect_current_workflow(conn):
+    """Auto-detect the most recently active workflow from task state."""
+    # Prefer in_progress tasks
+    row = conn.execute(
+        "SELECT workflow_id FROM tasks "
+        "WHERE status = 'in_progress' AND workflow_id IS NOT NULL "
+        "ORDER BY updated_at DESC LIMIT 1"
+    ).fetchone()
+    if row:
+        return row['workflow_id']
+    # Fall back to most recently updated task in any active state
+    row = conn.execute(
+        "SELECT workflow_id FROM tasks "
+        "WHERE status IN ('todo', 'done') AND workflow_id IS NOT NULL "
+        "ORDER BY updated_at DESC LIMIT 1"
+    ).fetchone()
+    return row['workflow_id'] if row else None
 
 
 def _find_jsonl(args):

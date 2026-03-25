@@ -71,9 +71,33 @@ Automatically tracks tool usage, thinking, and subagent events per session.
 
 ### How it works / 동작 방식
 
-- `on_tool_use.sh` hook records each tool call automatically → no manual action needed
-- `on_session_end.sh` hook parses the JSONL session file at session end (register as `Stop` hook)
+- `on_tool_use.sh` hook (matcher: `Edit|Write|Bash|Agent`) fires on every matched tool use:
+  - **Agent tool** → records `op progress --subagent true` (milestone) + `monitor subagent_start`
+  - **Edit/Write/Bash** → records `monitor tool_use` in `agent_events` only (no op progress noise)
+- `on_session_end.sh` hook parses the JSONL session file at session end, auto-detects the active workflow, and imports all events into `agent_events` (register as `Stop` hook)
 - `monitor record` is called by hooks; **do not call it directly**
+
+### Events Requiring Manual Recording / 수동 기록이 필요한 이벤트
+
+Hooks do not capture Skill invocations, MCP/plugin calls, or key decisions. Record these manually:
+
+| Event | Command |
+|-------|---------|
+| Skill invoked | `python -m cli op progress {T-ID} --summary "Skill: [name] — [purpose]"` |
+| MCP / plugin called | `python -m cli op progress {T-ID} --summary "MCP: [name] — [action]"` |
+| Key decision made | `python -m cli op progress {T-ID} --summary "Decision: [what was decided]"` |
+
+Memory and system files must be registered as resources **at the time they are created or modified**:
+
+```bash
+# Memory file written
+python -m cli resource add {T-ID} \
+  --path ./.claude/memory/feedback_xyz.md --type output --desc "memory: feedback on X"
+
+# System / config file modified
+python -m cli resource add {T-ID} \
+  --path ./.claude/settings.json --type output --desc "system: PostToolUse hooks added"
+```
 
 ### CLI Commands / CLI 명령어
 

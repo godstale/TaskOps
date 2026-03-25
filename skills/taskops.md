@@ -103,7 +103,7 @@ Hook configuration (optional):
 {
   "hooks": {
     "PostToolUse": [{
-      "matcher": "Edit|Write|Bash",
+      "matcher": "Edit|Write|Bash|Agent",
       "command": "bash /path/to/TaskOps/hooks/on_tool_use.sh"
     }]
   }
@@ -111,6 +111,7 @@ Hook configuration (optional):
 ```
 
 > Hook guard: `on_tool_use.sh` only fires when `TASKOPS_ACTIVE=1`.
+> Agent tool fires subagent dispatch recording; Edit/Write/Bash record to `agent_events` only.
 
 ---
 

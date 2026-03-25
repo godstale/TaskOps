@@ -69,7 +69,7 @@ Register TaskOps hooks in `.claude/settings.json` (project-level):
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "Edit|Write|Bash",
+        "matcher": "Edit|Write|Bash|Agent",
         "command": "bash /path/to/TaskOps/hooks/on_tool_use.sh"
       }
     ]
@@ -79,7 +79,7 @@ Register TaskOps hooks in `.claude/settings.json` (project-level):
 
 Available hooks:
 - `on_task_start.sh <TASK_ID>` — Sets task to `in_progress`, records `op start`
-- `on_tool_use.sh` — Records `op progress` for the current active task
+- `on_tool_use.sh` — Records subagent dispatch as `op progress` (Agent tool); records all tool uses in `agent_events`
 - `on_task_complete.sh <TASK_ID>` — Sets task to `done`, records `op complete`
 
 ---
@@ -246,17 +246,22 @@ These three behaviors are **required** during every execution session:
 
 **1. Report sub-operations to TaskOps**
 
-Whenever you invoke a skill, dispatch a sub-agent, call a tool, use an MCP/plugin, or take a
-significant thinking/planning step, record it as a progress operation so it appears in monitoring:
+Hooks auto-record the following — no manual action needed:
+- **Edit/Write/Bash** → recorded in `agent_events` (tool-level log)
+- **Agent tool (subagent dispatch)** → recorded as `op progress --subagent true` + `agent_events`
+
+Record these **manually** with `op progress`:
 
 ```bash
-python -m cli op progress <TASK_ID> --summary "Invoked sub-agent: code-reviewer for AMP-T003"
-python -m cli op progress <TASK_ID> --summary "Tool: Write — created src/api/auth.py"
-python -m cli op progress <TASK_ID> --summary "MCP: playwright — navigated to /login for E2E test"
-```
+# Skill invoked
+python -m cli op progress <TASK_ID> --summary "Skill: code-reviewer — reviewing AMP-T003"
 
-With `on_tool_use.sh` configured, Edit/Write/Bash tool uses are recorded automatically.
-For skill dispatches, sub-agents, and MCP calls you must record progress **manually**.
+# MCP / plugin called
+python -m cli op progress <TASK_ID> --summary "MCP: playwright — navigated to /login for E2E test"
+
+# Key decision or plan change
+python -m cli op progress <TASK_ID> --summary "Decision: async handler over sync for auth endpoint"
+```
 
 **2. Signal task start and completion**
 
@@ -271,10 +276,10 @@ After completing the final task in a session, register every meaningful output:
 # Output files produced
 python -m cli resource add <TASK_ID> --path ./path/to/output --type output --desc "description"
 
-# Memory files written during the session
+# Memory files — register immediately when written, not just at session end
 python -m cli resource add <TASK_ID> --path ./.claude/memory/feedback_xyz.md --type output --desc "memory: feedback on testing approach"
 
-# System/config files modified or created
+# System/config files — register immediately when created or modified
 python -m cli resource add <TASK_ID> --path ./.claude/settings.json --type output --desc "system: hooks configuration"
 ```
 

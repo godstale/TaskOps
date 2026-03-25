@@ -1,7 +1,13 @@
 #!/bin/bash
-# Hook: Called after tool use (Edit, Write, Bash)
+# Hook: Called after tool use (Edit, Write, Bash, Agent)
 # TaskOps Hook: 도구 사용 후 진행 상황 기록
 # Triggered by PostToolUse hook in Claude Code
+#
+# Matcher recommendation: "Edit|Write|Bash|Agent"
+#
+# Behavior by tool:
+#   Agent — subagent dispatch: records op progress (milestone) + monitor subagent_start
+#   Edit|Write|Bash — records monitor tool_use only (no op progress noise)
 #
 # Safety: Only fires when TaskOps is the active tracking system.
 # Set TASKOPS_ACTIVE=1 when TaskOps is chosen at the Planning Gate.
@@ -26,16 +32,23 @@ if [ -z "$DB_PATH" ]; then
 fi
 
 ACTIVE_TASK=$(python -m cli --db "$DB_PATH" workflow current 2>/dev/null)
-
 TOOL_NAME="${CLAUDE_TOOL_NAME:-unknown}"
 
-if [ -n "$ACTIVE_TASK" ]; then
-    python -m cli --db "$DB_PATH" op progress "$ACTIVE_TASK" \
-        --summary "Tool used: $TOOL_NAME" 2>/dev/null
+if [ "$TOOL_NAME" = "Agent" ]; then
+    # Subagent dispatch is a meaningful milestone — record as op progress
+    if [ -n "$ACTIVE_TASK" ]; then
+        python -m cli --db "$DB_PATH" op progress "$ACTIVE_TASK" \
+            --summary "Subagent dispatched" --subagent true 2>/dev/null
+    fi
+    python -m cli --db "$DB_PATH" monitor record \
+        --event subagent_start \
+        --task "${ACTIVE_TASK:-}" \
+        --source hook 2>/dev/null
+else
+    # Edit/Write/Bash: record in agent_events only — op progress is too noisy for every file op
+    python -m cli --db "$DB_PATH" monitor record \
+        --event tool_use \
+        --tool "$TOOL_NAME" \
+        --task "${ACTIVE_TASK:-}" \
+        --source hook 2>/dev/null
 fi
-
-python -m cli --db "$DB_PATH" monitor record \
-    --event tool_use \
-    --tool "$TOOL_NAME" \
-    --task "${ACTIVE_TASK:-}" \
-    --source hook 2>/dev/null

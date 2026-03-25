@@ -35,6 +35,27 @@ python -m cli op start {T-ID} --platform claude_code
 
 **2b. Work on the task** — implement, test, review
 
+Record progress manually for events hooks don't auto-capture:
+```bash
+# Skill invoked
+python -m cli op progress {T-ID} --summary "Skill: brainstorming — scope defined"
+
+# MCP / plugin called
+python -m cli op progress {T-ID} --summary "MCP: playwright — login flow E2E tested"
+
+# Key decision or approach change
+python -m cli op progress {T-ID} --summary "Decision: using JWT over session cookies"
+
+# Memory file written → register immediately as resource
+python -m cli resource add {T-ID} \
+  --path ./.claude/memory/feedback_xyz.md --type output --desc "memory: feedback on X"
+
+# System / config file created or modified → register immediately
+python -m cli resource add {T-ID} \
+  --path ./.claude/settings.json --type output --desc "system: PostToolUse hooks added"
+```
+> Subagent dispatches (Agent tool) are recorded automatically by the hook.
+
 **2c. Record progress at meaningful milestones**
 ```bash
 python -m cli op progress {T-ID} --summary "Implemented login endpoint, tests passing"
