@@ -6,7 +6,9 @@ description: >
 
   When starting work:
   - Create a workflow to register the work plan.
-  - Register the workflow's goals as Objectives before execution begins.
+  - Before execution begins, register the workflow's goals as Objectives in the DB tasks table.
+  - When resuming an existing workflow, always check registered Objectives first to understand prior goals
+    and lessons learned.
 
   During execution:
   - Report all detailed operations (skill/tool/MCP/plugin/sub-agent calls and thinking steps) to TaskOps.
@@ -15,8 +17,8 @@ description: >
 
   When work is complete:
   - Review each Objective and verify whether it was achieved.
-  - Register a new Objective summarizing: what was lacking, what needs improvement, and what to remember or
-    avoid in future sessions performing similar work.
+  - Register a new Objective in the DB tasks table summarizing: what was lacking, what needs improvement,
+    and what to remember or avoid in future sessions performing similar work.
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -103,7 +105,7 @@ Register TaskOps hooks in `.claude/settings.json` (project-level):
 
 Available hooks:
 - `on_task_start.sh <TASK_ID>` — Sets task to `in_progress`, records `op start`
-- `on_tool_use.sh` — Records subagent dispatch as `op progress` (Agent tool); records all tool uses in `agent_events`
+- `on_tool_use.sh` — Records subagent dispatch as `op progress --subagent true` (Agent tool)
 - `on_task_complete.sh <TASK_ID>` — Sets task to `done`, records `op complete`
 
 ---
@@ -165,7 +167,7 @@ python -m cli resource list --workflow PRJ-AMP --type output
 Reset a workflow's tasks to `todo` and run it again. Other workflows are unaffected:
 
 ```bash
-# Restart a specific workflow (auto-saves checkpoint first; operations always cleared)
+# Restart a specific workflow (operations always cleared automatically)
 python -m cli workflow restart PRJ-AMP
 
 # Verify reset state
@@ -268,8 +270,7 @@ These three behaviors are **required** during every execution session:
 **1. Report sub-operations to TaskOps**
 
 Hooks auto-record the following — no manual action needed:
-- **Edit/Write/Bash** → recorded in `agent_events` (tool-level log)
-- **Agent tool (subagent dispatch)** → recorded as `op progress --subagent true` + `agent_events`
+- **Agent tool (subagent dispatch)** → recorded as `op progress --subagent true`
 
 Record these **manually** with `op progress`:
 

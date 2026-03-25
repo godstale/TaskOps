@@ -46,13 +46,6 @@ def handle(args):
         (args.prefix, args.prefix, args.name, now, now)
     )
 
-    # Insert default settings
-    for key, value, desc in DEFAULT_SETTINGS:
-        conn.execute(
-            "INSERT OR IGNORE INTO settings (key, value, description, updated_at) "
-            "VALUES (?, ?, ?, ?)",
-            (key, value, desc, now)
-        )
     conn.commit()
 
     close_connection(conn)

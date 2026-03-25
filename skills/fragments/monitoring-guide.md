@@ -64,22 +64,9 @@ python -m cli op log --task <TASK_ID>
 python -m cli op log --workflow <WORKFLOW_ID>
 ```
 
-## Agent Activity Monitoring / 에이전트 활동 모니터링
+## Events Requiring Manual Recording / 수동 기록이 필요한 이벤트
 
-Automatically tracks tool usage, thinking, and subagent events per session.
-훅을 통해 도구 사용, 사고, 서브에이전트 이벤트를 세션 단위로 자동 추적합니다.
-
-### How it works / 동작 방식
-
-- `on_tool_use.sh` hook (matcher: `Edit|Write|Bash|Agent`) fires on every matched tool use:
-  - **Agent tool** → records `op progress --subagent true` (milestone) + `monitor subagent_start`
-  - **Edit/Write/Bash** → records `monitor tool_use` in `agent_events` only (no op progress noise)
-- `on_session_end.sh` hook parses the JSONL session file at session end, auto-detects the active workflow, and imports all events into `agent_events` (register as `Stop` hook)
-- `monitor record` is called by hooks; **do not call it directly**
-
-### Events Requiring Manual Recording / 수동 기록이 필요한 이벤트
-
-Hooks do not capture Skill invocations, MCP/plugin calls, or key decisions. Record these manually:
+Hooks auto-record subagent dispatch. Skill invocations, MCP/plugin calls, and key decisions must be recorded manually:
 
 | Event | Command |
 |-------|---------|
@@ -98,40 +85,6 @@ python -m cli resource add {T-ID} \
 python -m cli resource add {T-ID} \
   --path ./.claude/settings.json --type output --desc "system: PostToolUse hooks added"
 ```
-
-### CLI Commands / CLI 명령어
-
-```bash
-# Parse the latest JSONL session file and import events into DB
-python -m cli monitor parse --auto
-
-# Parse a specific session
-python -m cli monitor parse --session <session-hash>
-
-# Associate parsed events with a workflow
-python -m cli monitor parse --auto --workflow {WORKFLOW_ID}
-
-# Tool usage report (all workflows)
-python -m cli monitor report
-
-# Tool usage report scoped to a workflow
-python -m cli monitor report --workflow {WORKFLOW_ID}
-
-# Session summary (most recent session)
-python -m cli monitor summary
-
-# Session summary for a specific session
-python -m cli monitor summary --session <session-hash>
-```
-
-### Report output columns / 리포트 출력 컬럼
-
-| Column | Description |
-|--------|-------------|
-| Tool   | Tool name |
-| Calls  | Total call count |
-| Avg ms | Average duration (JSONL source only) |
-| %      | Percentage of total calls |
 
 ---
 

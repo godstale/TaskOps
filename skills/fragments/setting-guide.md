@@ -24,18 +24,29 @@ Settings are NOT for task output data. Use `resource add` for artifacts.
 
 ## Commands
 
-```bash
-# Register a dependency or configuration value (--workflow is required)
-python -m cli --db $TASKOPS_DB setting set <key> <value> --workflow <W-ID> --desc "<description>"
+> ⚠️ `--workflow <W-ID>` is **required** for `set`, `get`, and `delete`. Always provide a real workflow ID — never omit or pass an empty string.
 
-# Read a setting (--workflow is required)
-python -m cli --db $TASKOPS_DB setting get <key> --workflow <W-ID>
+```bash
+# Register a dependency or configuration value
+python -m cli --db $TASKOPS_DB setting set <key> <value> --workflow PRJ-MP --desc "<description>"
+
+# Read a setting
+python -m cli --db $TASKOPS_DB setting get <key> --workflow PRJ-MP
 
 # List all settings (--workflow optional, omit to show all)
-python -m cli --db $TASKOPS_DB setting list [--workflow <W-ID>]
+python -m cli --db $TASKOPS_DB setting list [--workflow PRJ-MP]
 
-# Remove a setting (--workflow is required)
-python -m cli --db $TASKOPS_DB setting delete <key> --workflow <W-ID>
+# Remove a setting
+python -m cli --db $TASKOPS_DB setting delete <key> --workflow PRJ-MP
+```
+
+**Correct usage:**
+```bash
+# ✅ Always pass a real workflow ID
+python -m cli --db $TASKOPS_DB setting set autonomy_level high --workflow PRJ-MP
+
+# ❌ Never omit --workflow or pass empty string for set/get/delete
+python -m cli --db $TASKOPS_DB setting set autonomy_level high   # missing --workflow → error
 ```
 
 ## Pattern: Pre-Execution Dependency Check
@@ -43,7 +54,7 @@ python -m cli --db $TASKOPS_DB setting delete <key> --workflow <W-ID>
 Before starting execution, verify required dependencies are ready:
 
 ```bash
-python -m cli --db $TASKOPS_DB setting list --workflow <W-ID>
+python -m cli --db $TASKOPS_DB setting list --workflow PRJ-MP
 ```
 
 If a required tool or service is not yet available, block execution:
@@ -51,11 +62,11 @@ If a required tool or service is not yet available, block execution:
 ```bash
 # Record as unresolved — do not start dependent tasks
 python -m cli --db $TASKOPS_DB setting set stripe_api_key_configured false \
-    --workflow <W-ID> --desc "Required for T005 (Payment processing). Get key from team Slack."
+    --workflow PRJ-MP --desc "Required for T005 (Payment processing). Get key from team Slack."
 ```
 
 Update when resolved:
 ```bash
 python -m cli --db $TASKOPS_DB setting set stripe_api_key_configured true \
-    --workflow <W-ID> --desc "Configured 2026-03-22. Stored in .env"
+    --workflow PRJ-MP --desc "Configured 2026-03-22. Stored in .env"
 ```

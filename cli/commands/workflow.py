@@ -250,6 +250,7 @@ def handle_current(args):
 def handle_create(args):
     from .utils import get_project_id, next_workflow_id
     from datetime import datetime
+    from .init import DEFAULT_SETTINGS
     conn = get_db(args)
     try:
         project_id = get_project_id(conn)
@@ -262,6 +263,12 @@ def handle_create(args):
              getattr(args, 'description', ''),
              getattr(args, 'source_file', None), now)
         )
+        for key, value, desc in DEFAULT_SETTINGS:
+            conn.execute(
+                "INSERT OR IGNORE INTO settings (workflow_id, key, value, description, updated_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (wf_id, key, value, desc, now)
+            )
         conn.commit()
         print(f"Created workflow {wf_id}: {args.title}")
     finally:

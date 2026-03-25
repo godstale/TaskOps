@@ -31,7 +31,7 @@ def register(subparsers):
 
     update = sub.add_parser('update', help='Update a task')
     update.add_argument('id', help='Task ID')
-    update.add_argument('--status', help='New status')
+    update.add_argument('--status', choices=['todo', 'in_progress', 'interrupted', 'done', 'cancelled'], help='New status')
     update.add_argument('--title', help='New title')
     update.add_argument('--description', help='New description')
     update.add_argument('--todo', help='New todo checklist')

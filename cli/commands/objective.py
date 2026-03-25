@@ -23,7 +23,7 @@ def register(subparsers):
 
     update = sub.add_parser('update', help='Update an objective')
     update.add_argument('id', help='Objective ID')
-    update.add_argument('--status', help='New status')
+    update.add_argument('--status', choices=['todo', 'in_progress', 'interrupted', 'done', 'cancelled'], help='New status')
     update.add_argument('--title', help='New title')
     update.add_argument('--milestone', help='New milestone target')
     update.add_argument('--due-date', help='New due date')

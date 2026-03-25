@@ -135,7 +135,7 @@ Hook configuration (optional):
 ```
 
 > Hook guard: `on_tool_use.sh` only fires when `TASKOPS_ACTIVE=1`.
-> Agent tool fires subagent dispatch recording; Edit/Write/Bash record to `agent_events` only.
+> Agent tool fires subagent dispatch → recorded as `op progress --subagent true`.
 
 ---
 
@@ -200,15 +200,6 @@ python -m cli workflow next --workflow {PREFIX}-{SHORT}
 ## Phase 5: Rollback & Restart
 
 ```bash
-# Create checkpoint at any point
-python -m cli project checkpoint --note "After T003 complete"
-
-# List checkpoints
-python -m cli project checkpoint list
-
-# Roll back to checkpoint (auto-saves current state first)
-python -m cli project rollback --checkpoint 2
-
 # Reset specific workflow tasks to todo (operations always cleared automatically)
 python -m cli workflow restart {PREFIX}-{SHORT}
 
@@ -277,9 +268,6 @@ python -m cli workflow next --workflow {PREFIX}-{SHORT}
 | `setting get <key> --workflow <W-ID>` | Get setting value (**--workflow required**) |
 | `setting list [--workflow <W-ID>]` | List settings (all if --workflow omitted) |
 | `setting delete <key> --workflow <W-ID>` | Delete setting (**--workflow required**) |
-| `project checkpoint [--note]` | Create status snapshot |
-| `project checkpoint list` | List snapshots |
-| `project rollback --checkpoint <id>` | Restore task statuses from snapshot |
 | `project restart [--clear-ops]` | Reset all tasks to todo |
 
 **workflow_id rules:**

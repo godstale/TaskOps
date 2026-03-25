@@ -2,12 +2,13 @@
 TaskOps DB 스키마 정의 모듈.
 """
 
-SCHEMA_VERSION = 7
+SCHEMA_VERSION = 8
 
 SQL_CREATE_TASKS = """
 CREATE TABLE IF NOT EXISTS tasks (
     id          TEXT PRIMARY KEY,
     project_id  TEXT NOT NULL,
+    workflow_id TEXT,                      -- NOT NULL for ETS types (v4+); only 'project' type may be NULL
     type        TEXT NOT NULL CHECK(type IN ('project','epic','task','objective')),
     title       TEXT NOT NULL,
     description TEXT,
@@ -21,7 +22,6 @@ CREATE TABLE IF NOT EXISTS tasks (
     seq_order   INTEGER,
     parallel_group TEXT,
     depends_on  TEXT,
-    workflow_id TEXT,                      -- NOT NULL for ETS types (v4+); only 'project' type may be NULL
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at  TEXT NOT NULL DEFAULT (datetime('now')),
     CHECK (type = 'project' OR workflow_id IS NOT NULL)
@@ -95,40 +95,6 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 """
 
-SQL_CREATE_CHECKPOINTS = """
-CREATE TABLE IF NOT EXISTS checkpoints (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    note        TEXT,
-    snapshot    TEXT NOT NULL,
-    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
-);
-"""
-
-SQL_CREATE_AGENT_EVENTS = """
-CREATE TABLE IF NOT EXISTS agent_events (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    session_id      TEXT,
-    workflow_id     TEXT,
-    task_id         TEXT,
-    event_type      TEXT NOT NULL
-                    CHECK(event_type IN (
-                        'tool_use','tool_result','thinking',
-                        'subagent_start','subagent_end'
-                    )),
-    tool_name       TEXT,
-    skill_name      TEXT,
-    input_tokens    INTEGER,
-    output_tokens   INTEGER,
-    thinking_tokens INTEGER,
-    duration_ms     INTEGER,
-    event_timestamp TEXT,
-    jsonl_id        TEXT,
-    source          TEXT DEFAULT 'hook'
-                    CHECK(source IN ('hook','jsonl')),
-    created_at      TEXT NOT NULL DEFAULT (datetime('now')),
-    UNIQUE(session_id, event_timestamp, tool_name, event_type)
-);
-"""
 
 SQL_CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_tasks_project   ON tasks(project_id);",
@@ -138,16 +104,11 @@ SQL_CREATE_INDEXES = [
     "CREATE INDEX IF NOT EXISTS idx_operations_task ON operations(task_id);",
     "CREATE INDEX IF NOT EXISTS idx_resources_task  ON resources(task_id);",
     "CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);",
-    "CREATE INDEX IF NOT EXISTS idx_agent_events_session  ON agent_events(session_id);",
-    "CREATE INDEX IF NOT EXISTS idx_agent_events_workflow ON agent_events(workflow_id);",
-    "CREATE INDEX IF NOT EXISTS idx_agent_events_task     ON agent_events(task_id);",
 ]
 
-SQL_MIGRATE_V6_TO_V7 = [
-    SQL_CREATE_AGENT_EVENTS,
-    "CREATE INDEX IF NOT EXISTS idx_agent_events_session  ON agent_events(session_id);",
-    "CREATE INDEX IF NOT EXISTS idx_agent_events_workflow ON agent_events(workflow_id);",
-    "CREATE INDEX IF NOT EXISTS idx_agent_events_task     ON agent_events(task_id);",
+SQL_MIGRATE_V7_TO_V8 = [
+    "DROP TABLE IF EXISTS agent_events;",
+    "DROP TABLE IF EXISTS checkpoints;",
 ]
 
 SQL_MIGRATE_V1_TO_V2 = [
@@ -358,26 +319,27 @@ def migrate_schema(conn):
         conn.commit()
 
     if current_version < 7:
-        existing_tables = {r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table'"
-        ).fetchall()}
-        if 'agent_events' not in existing_tables:
-            for stmt in SQL_MIGRATE_V6_TO_V7:
-                try:
-                    conn.execute(stmt)
-                except Exception:
-                    pass
-        else:
-            for stmt in SQL_MIGRATE_V6_TO_V7[1:]:
-                try:
-                    conn.execute(stmt)
-                except Exception:
-                    pass
+        # v7 added agent_events — skip creation, v8 will drop it immediately
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
             "INSERT INTO settings (workflow_id, key, value, description, updated_at) "
             "VALUES ('', '__schema_version', '7', 'DB schema version', ?) "
             "ON CONFLICT(workflow_id, key) DO UPDATE SET value='7', updated_at=?",
+            (now, now)
+        )
+        conn.commit()
+
+    if current_version < 8:
+        for stmt in SQL_MIGRATE_V7_TO_V8:
+            try:
+                conn.execute(stmt)
+            except Exception:
+                pass
+        now = datetime.now().isoformat(sep=' ', timespec='seconds')
+        conn.execute(
+            "INSERT INTO settings (workflow_id, key, value, description, updated_at) "
+            "VALUES ('', '__schema_version', '8', 'DB schema version', ?) "
+            "ON CONFLICT(workflow_id, key) DO UPDATE SET value='8', updated_at=?",
             (now, now)
         )
         conn.commit()
@@ -392,8 +354,6 @@ def create_tables(conn):
     conn.execute(SQL_CREATE_OPERATIONS)
     conn.execute(SQL_CREATE_RESOURCES)
     conn.execute(SQL_CREATE_SETTINGS)
-    conn.execute(SQL_CREATE_CHECKPOINTS)
-    conn.execute(SQL_CREATE_AGENT_EVENTS)
     for idx_sql in SQL_CREATE_INDEXES:
         conn.execute(idx_sql)
     conn.commit()
