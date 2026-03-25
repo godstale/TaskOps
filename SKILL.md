@@ -4,13 +4,19 @@ description: >
   Use when a project plan or implementation spec has been finalized and execution is about to begin,
   or a session starts on a project that already has a taskops.db.
 
-  During execution:
-  - Report all detailed operations (skill calls, sub-agent dispatches, tool uses, MCP/plugin calls,
-    and thinking steps) to TaskOps so they are visible in the monitoring dashboard.
-  - Signal task start and task completion to keep Task statuses up to date in the DB.
-  - When all work is finished, register output artifacts, memory files, and system files as
-    resources in TaskOps so future sessions can locate and reuse them.
+  When starting work:
+  - Create a workflow to register the work plan.
+  - Register the workflow's goals as Objectives before execution begins.
 
+  During execution:
+  - Report all detailed operations (skill/tool/MCP/plugin/sub-agent calls and thinking steps) to TaskOps.
+  - Signal task start and task completion to keep Task status up to date in the DB.
+  - When all work is finished, register output artifacts, memory files, and system files as resources in TaskOps.
+
+  When work is complete:
+  - Review each Objective and verify whether it was achieved.
+  - Register a new Objective summarizing: what was lacking, what needs improvement, and what to remember or
+    avoid in future sessions performing similar work.
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -34,6 +40,24 @@ Trigger conditions (any one is sufficient):
 - Python 3.10+
 - TaskOps repository cloned (contains `cli/` package and `hooks/`)
 - Project initialized with `python -m cli init`
+
+---
+
+## ⚠️ Common Mistakes (Gotchas)
+
+These are the most frequent errors — check each before proceeding:
+
+| Mistake | Fix |
+|---------|-----|
+| Missing `--workflow <W-ID>` on `epic create`, `task create`, `objective create` | Always pass `--workflow`; use `workflow import` for bulk creation |
+| Using `epic create`/`task create` individually | `workflow import` is the **only valid plan registration path** |
+| Not setting `TASKOPS_DB` env var | `export TASKOPS_DB=/absolute/path/to/project/taskops.db` first |
+| Creating a new workflow without checking for duplicates | Always run `workflow list` before `workflow create` |
+| Skipping resource registration before marking task done | `resource add <T-ID> --path ./file --type output --desc "..."` then verify: `resource list --task <T-ID>` must be non-empty |
+| Not registering Objectives before execution starts | Before first task: `objective create --workflow <W-ID> --title "Goal" --milestone "Success criteria"` |
+| Not doing post-work Objective review | After final task: `objective list --workflow <W-ID>`, then register retrospective: `objective create --workflow <W-ID> --title "Retrospective: ..." --milestone "lessons"` |
+| Not clearing operations when restarting workflow | `workflow restart <W-ID>` always clears operations automatically; no extra flag needed |
+| Leaving a task `in_progress` when work stops | Always close with `op complete` or `task update --status interrupted` |
 
 ---
 
@@ -141,11 +165,8 @@ python -m cli resource list --workflow PRJ-AMP --type output
 Reset a workflow's tasks to `todo` and run it again. Other workflows are unaffected:
 
 ```bash
-# Restart a specific workflow (auto-saves checkpoint first)
+# Restart a specific workflow (auto-saves checkpoint first; operations always cleared)
 python -m cli workflow restart PRJ-AMP
-
-# Restart and clear operation history
-python -m cli workflow restart PRJ-AMP --clear-ops
 
 # Verify reset state
 python -m cli query show --workflow PRJ-AMP

@@ -62,12 +62,16 @@ python -m cli op progress {T-ID} --summary "Implemented login endpoint, tests pa
 ```
 Call `op progress` after: finishing a component, creating a key file, passing tests, resolving a bug.
 
-**2d. Register all artifacts (HARD GATE — required before marking done)**
+**2d. Register all artifacts (⛔ HARD GATE — REQUIRED before marking done)**
 
 Register every file created, modified, or referenced during the task:
 ```bash
 python -m cli resource add {T-ID} --path ./output/report.html --type output --desc "Final report"
 python -m cli resource add {T-ID} --path ./tmp/analysis.csv --type intermediate --desc "Raw data"
+# Memory files — register immediately when written
+python -m cli resource add {T-ID} --path ./.claude/memory/feedback_xyz.md --type output --desc "memory: feedback on X"
+# System / config files — register immediately when modified
+python -m cli resource add {T-ID} --path ./.claude/settings.json --type output --desc "system: hooks configuration"
 ```
 
 Verify registration:
@@ -75,7 +79,7 @@ Verify registration:
 python -m cli resource list --task {T-ID}
 ```
 
-> ⛔ If list is empty or incomplete → return to resource add. Do NOT proceed.
+> ⛔ **If list is empty or incomplete → return to resource add. Do NOT mark task done until verified.**
 
 **2e. Mark task done**
 ```bash
@@ -105,6 +109,28 @@ python -m cli op interrupt {T-ID} --summary "Blocked: external dependency unreso
 ```bash
 python -m cli query status --workflow {PREFIX}-W001
 ```
+
+### Objective Retrospective (Required)
+
+Review each Objective registered at the start of this workflow:
+
+```bash
+python -m cli objective list --workflow {PREFIX}-W001
+```
+
+For each Objective, assess: Was it achieved? Partially? Not at all?
+
+Then register a retrospective Objective capturing lessons for future sessions:
+
+```bash
+python -m cli objective create --workflow {PREFIX}-W001 \
+  --title "Retrospective: [workflow title]" \
+  --milestone "What went well, what was lacking, what to avoid next time"
+```
+
+Include in the milestone: unmet goals, discovered edge cases, commands that caused confusion, and any patterns worth repeating.
+
+> ⛔ This step is **required** — do not skip even if all tasks completed successfully. The retrospective Objective is the primary learning mechanism for future sessions.
 
 Then offer the user:
 1. **Export summary** — `workflow export {PREFIX}-W001` (creates TODO.md snapshot)

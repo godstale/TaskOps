@@ -24,9 +24,7 @@ def register(subparsers):
     rb.set_defaults(func=handle_rollback)
 
     # restart
-    rs = sub.add_parser('restart', help='Reset all tasks to todo')
-    rs.add_argument('--clear-ops', action='store_true',
-                    help='Also clear all operation records')
+    rs = sub.add_parser('restart', help='Reset all tasks to todo and clear operation history')
     rs.set_defaults(func=handle_restart)
 
 
@@ -150,9 +148,9 @@ def handle_restart(args):
         (datetime.now().isoformat(), project_id)
     )
 
-    if args.clear_ops:
-        conn.execute("DELETE FROM operations")
-        print("  Operation history cleared.")
+    # Always clear operations on restart (clean slate for re-execution)
+    conn.execute("DELETE FROM operations")
+    print("  Operation history cleared.")
 
     conn.commit()
     close_connection(conn)

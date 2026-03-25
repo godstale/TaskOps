@@ -1,16 +1,22 @@
 ---
 name: taskops
 description: >
-  Use when user explicitly requests TaskOps, wants to manage a TODO list as tracked tasks,
-  has a plan/spec and wants to start execution, wants to monitor AI execution progress,
-  or a session starts on a project that already has taskops.db.
-conflicts:
-  mutual_exclusive:
-    - writing-plans
-    - executing-plans
-    - subagent-driven-development
-  safe_before:
-    - brainstorming
+  Use when ANY of these is true:
+  - when a project plan or implementation spec has been finalized and execution is about to begin
+  - Session starts and `taskops.db` exists in the project directory (resume mode)
+
+  When starting work:
+  - Create a workflow to register the work plan.
+  - Register the workflow's goals as Objectives BEFORE execution begins.
+
+  During execution:
+  - Signal task start (`op start`) and completion (`op complete`) for every task.
+  - Register all output artifacts as resources before marking a task done.
+
+  When work is complete:
+  - Review each Objective and verify whether it was achieved.
+  - Register a new Objective summarizing: what was lacking, what needs improvement,
+    and what to remember or avoid in future sessions performing similar work.
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -45,6 +51,24 @@ When TaskOps is active, these skills are **incompatible** — they use conflicti
 
 - Python 3.10+
 - TaskOps repository cloned (contains `cli/` package and `hooks/`)
+
+---
+
+## ⚠️ Common Mistakes (Gotchas)
+
+These are the most frequent errors — check each before proceeding:
+
+| Mistake | What happens | Fix |
+|---------|-------------|-----|
+| Missing `--workflow <W-ID>` on `epic create`, `task create`, `objective create` | Command fails or creates orphaned record | Always pass `--workflow`; use `workflow import` for bulk creation |
+| Using `epic create`/`task create` individually instead of `workflow import` | Inconsistent plan state, no execution order | `workflow import` is the **only valid plan registration path** |
+| Not setting `TASKOPS_DB` env var | Commands operate on wrong or default DB | Always `export TASKOPS_DB=/absolute/path/to/project/taskops.db` first |
+| Creating a new workflow without checking for duplicates | Duplicate workflows tracking same work | Always run `workflow list` before `workflow create` |
+| Skipping resource registration before `task update --status done` | Artifacts lost, gate violation | `resource add <T-ID> --path ./file --type output --desc "..."` then `resource list --task <T-ID>` — must be non-empty before marking done |
+| Not registering Objectives before execution starts | Goals not tracked; no retrospective anchor | Before first task: `objective create --workflow <W-ID> --title "Goal" --milestone "Success criteria"` |
+| Not doing post-work Objective review | Lessons not captured for future sessions | After final task: `objective list --workflow <W-ID>`, then: `objective create --workflow <W-ID> --title "Retrospective: ..." --milestone "what went well, what was lacking, what to avoid"` |
+| Not clearing operations when restarting workflow | Stale operation history misleads future sessions | `workflow restart <W-ID>` always clears operations automatically — no extra flag needed |
+| Leaving a task `in_progress` when work stops | Inconsistent DB state on resume | Always close with `op complete` or `task update --status interrupted` |
 
 ---
 
@@ -185,7 +209,7 @@ python -m cli project checkpoint list
 # Roll back to checkpoint (auto-saves current state first)
 python -m cli project rollback --checkpoint 2
 
-# Reset specific workflow tasks to todo
+# Reset specific workflow tasks to todo (operations always cleared automatically)
 python -m cli workflow restart {PREFIX}-{SHORT}
 
 # Reset ALL tasks to todo (project-wide)
@@ -226,7 +250,7 @@ python -m cli workflow next --workflow {PREFIX}-{SHORT}
 | `workflow export <W-ID> [--output <path>]` | Export to TODO.md (default: next to DB) |
 | `workflow report <W-ID> --summary '...' [--details '...']` | Submit final completion report; marks workflow completed |
 | `workflow delete <W-ID>` | Delete workflow and all its tasks |
-| `workflow restart <W-ID> [--clear-ops]` | Reset workflow tasks to todo |
+| `workflow restart <W-ID>` | Reset workflow tasks to todo; operations always cleared |
 | `workflow show [--workflow <W-ID>]` | Show execution order |
 | `workflow next [--workflow <W-ID>]` | Show next executable tasks |
 | `workflow current [--workflow <W-ID>]` | Show active task |

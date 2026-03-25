@@ -92,7 +92,24 @@ JSON format:
 
 > ⛔ NEVER use `epic create` / `task create` individually. `workflow import` is the only valid plan registration path.
 
-## Step 5: Configure Settings (Dependencies)
+## Step 5: Register Objectives
+
+Before execution, register the workflow's goals as Objectives. These serve as the anchor for the post-work retrospective.
+
+```bash
+# Goal-based objective (what success looks like)
+python -m cli objective create --workflow PRJ-PT \
+  --title "All API endpoints migrated and tested" \
+  --milestone "REST → async migration complete"
+
+# Deadline-based objective
+python -m cli objective create --workflow PRJ-PT \
+  --title "Demo-ready build" --due-date 2026-04-01
+```
+
+> ⛔ Objectives must be registered **before starting the first task**. Verify with: `python -m cli objective list --workflow PRJ-PT`
+
+## Step 6: Configure Settings (Dependencies)
 
 Before execution, register any required tools, services, or APIs as settings.
 **Always specify `--workflow` so settings are scoped to this plan:**
@@ -110,7 +127,7 @@ python -m cli setting list --workflow PRJ-PT
 
 See `@skills/fragments/setting-guide.md` for full setting reference.
 
-## Step 6: Verify and Show Plan
+## Step 7: Verify and Show Plan
 
 ```bash
 python -m cli query show --workflow PRJ-PT

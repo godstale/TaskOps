@@ -57,10 +57,8 @@ def register(subparsers):
                            help='Path to JSON structure file')
     imp.set_defaults(func=handle_import)
 
-    restart = sub.add_parser('restart', help='Reset workflow tasks to todo for re-execution')
+    restart = sub.add_parser('restart', help='Reset workflow tasks to todo and clear operation history')
     restart.add_argument('workflow_id', help='Workflow ID to restart (e.g. PRJ-W001)')
-    restart.add_argument('--clear-ops', action='store_true',
-                         help='Also clear operation records for this workflow')
     restart.set_defaults(func=handle_restart)
 
     exp = sub.add_parser('export', help='Export workflow to TODO.md format')
@@ -462,13 +460,13 @@ def handle_restart(args):
         )
         reset_count = result.rowcount
 
-        if args.clear_ops:
-            task_ids = conn.execute(
-                "SELECT id FROM tasks WHERE workflow_id=?", (args.workflow_id,)
-            ).fetchall()
-            for t in task_ids:
-                conn.execute("DELETE FROM operations WHERE task_id=?", (t['id'],))
-            print(f"  Operation history cleared for {args.workflow_id}.")
+        # Always clear operations on restart (clean slate for re-execution)
+        task_ids = conn.execute(
+            "SELECT id FROM tasks WHERE workflow_id=?", (args.workflow_id,)
+        ).fetchall()
+        for t in task_ids:
+            conn.execute("DELETE FROM operations WHERE task_id=?", (t['id'],))
+        print(f"  Operation history cleared for {args.workflow_id}.")
 
         conn.commit()
         print(f"Workflow {args.workflow_id} restarted: {reset_count} tasks reset to 'todo'")
