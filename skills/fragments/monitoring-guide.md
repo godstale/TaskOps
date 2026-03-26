@@ -19,9 +19,11 @@ Record operations to track agent progress on each task.
 > `op` commands automatically resolve `workflow_id` from the task's own `workflow_id` field.
 > No need to pass `--workflow` explicitly unless you need to override it.
 
+Use the platform value matching your agent: `claude_code` (Claude Code) · `gemini` (Gemini CLI) · `unknown` (other).
+
 ```bash
 # Record task start (workflow_id auto-resolved from task)
-python -m cli op start {TASK_ID} --platform claude_code
+python -m cli op start {TASK_ID} --platform {YOUR_PLATFORM}
 
 # Record progress (include meaningful summary)
 python -m cli op progress {TASK_ID} --summary "Implemented login endpoint"

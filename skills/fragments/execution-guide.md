@@ -28,9 +28,15 @@ python -m cli workflow next --workflow {PREFIX}-W001
 For each task, follow this exact sequence:
 
 **2a. Start the task**
+
+Determine your platform value before running:
+- Claude Code → `claude_code`
+- Gemini CLI → `gemini`
+- Other → `unknown`
+
 ```bash
 python -m cli task update {T-ID} --status in_progress
-python -m cli op start {T-ID} --platform claude_code
+python -m cli op start {T-ID} --platform {YOUR_PLATFORM}
 ```
 
 **2b. Work on the task** — implement, test, review
