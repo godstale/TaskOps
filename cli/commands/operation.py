@@ -45,6 +45,7 @@ def register(subparsers):
     error = sub.add_parser('error', help='Record error')
     error.add_argument('task_id', help='Task ID')
     error.add_argument('--summary', required=True, help='Error summary')
+    error.add_argument('--details', help='Error details (stack trace, context, JSON)')
     error.add_argument('--workflow', default=None, help='Workflow ID (auto-resolved from task if omitted)')
     error.set_defaults(func=handle_error)
 
@@ -145,9 +146,9 @@ def handle_error(args):
         workflow_id = _resolve_workflow_id(conn, args)
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
         conn.execute(
-            "INSERT INTO operations (task_id, operation_type, summary, workflow_id, created_at) "
-            "VALUES (?, 'error', ?, ?, ?)",
-            (args.task_id, args.summary, workflow_id, now)
+            "INSERT INTO operations (task_id, operation_type, summary, details, workflow_id, created_at) "
+            "VALUES (?, 'error', ?, ?, ?, ?)",
+            (args.task_id, args.summary, getattr(args, 'details', None), workflow_id, now)
         )
         conn.commit()
         print(f"Error recorded: {args.task_id} - {args.summary}")

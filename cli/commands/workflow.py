@@ -433,7 +433,6 @@ def handle_import(args):
 
 def handle_restart(args):
     from datetime import datetime
-    from .utils import get_project_id
 
     conn = get_db(args)
     try:
@@ -444,19 +443,6 @@ def handle_restart(args):
         if not wf:
             print(f"Workflow not found: {args.workflow_id}")
             raise SystemExit(1)
-
-        # Auto-save checkpoint before restart
-        project_id = get_project_id(conn)
-        rows = conn.execute(
-            "SELECT id, status, interrupt FROM tasks "
-            "WHERE project_id=? AND type != 'project'",
-            (project_id,)
-        ).fetchall()
-        snapshot = {r['id']: {'status': r['status'], 'interrupt': r['interrupt']} for r in rows}
-        conn.execute(
-            "INSERT INTO checkpoints (note, snapshot) VALUES (?, ?)",
-            (f"[auto] before workflow restart {args.workflow_id}", json.dumps(snapshot))
-        )
 
         # Reset only tasks belonging to this workflow
         now = datetime.now().isoformat(sep=' ', timespec='seconds')
@@ -477,7 +463,6 @@ def handle_restart(args):
 
         conn.commit()
         print(f"Workflow {args.workflow_id} restarted: {reset_count} tasks reset to 'todo'")
-        print("  Auto-checkpoint saved before restart.")
     finally:
         close_connection(conn)
 

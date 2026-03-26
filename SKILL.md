@@ -5,20 +5,34 @@ description: >
   or a session starts on a project that already has a taskops.db.
 
   When starting work:
-  - Create a workflow to register the work plan.
-  - Before execution begins, register the workflow's goals as Objectives in the DB tasks table.
-  - When resuming an existing workflow, always check registered Objectives first to understand prior goals
-    and lessons learned.
+  - Register a workflow and import the full work plan (all tasks/epics) with workflow_id.
+  - Before execution begins, register verifiable end-goals as Objectives (milestone = success criteria).
+  - Also register in-execution constraints and cautions as Objectives (rules that must be followed during work).
+  - When resuming an existing workflow, always check registered Objectives first to understand prior goals,
+    constraints, and lessons learned before writing any code.
 
   During execution:
-  - Report all detailed operations (skill/tool/MCP/plugin/sub-agent calls and thinking steps) to TaskOps.
-  - Signal task start and task completion to keep Task status up to date in the DB.
-  - When all work is finished, register output artifacts, memory files, and system files as resources in TaskOps.
+  - Record every tool/skill/sub-agent/MCP/plugin/thinking step to TaskOps via `op progress` with the
+    appropriate flag: --tool, --skill, --mcp, --subagent. For thinking steps and plugin calls, use
+    --summary "Thinking: [topic]" or --summary "Plugin: [name] — [action]".
+  - Signal task start (`op start`) and completion (`op complete`) to keep Task status up to date.
+  - When an error occurs, record it immediately via `op error --summary "..." --details "..."`.
+    Errors are stored in the operations table (type='error') — there is no separate errors table.
+  - Register resources (output files, memory files, config files) as they are created or modified,
+    not only at session end.
 
   When work is complete:
-  - Review each Objective and verify whether it was achieved.
-  - Register a new Objective in the DB tasks table summarizing: what was lacking, what needs improvement,
-    and what to remember or avoid in future sessions performing similar work.
+  - Review each Objective: update status to 'done' or 'cancelled' to reflect actual outcomes.
+  - Register a retrospective Objective summarizing: goal achievement results, what was lacking,
+    what needs improvement, and what to remember or avoid in future sessions.
+  - Register any new constraints, changed requirements, or cautions as Objectives for the next run.
+  - Submit a workflow completion report via `workflow report`.
+
+  When re-executing a workflow:
+  - Always run `workflow restart <W-ID>` first — this resets all tasks to 'todo' AND clears the
+    entire operations history (including error records) for a clean slate.
+  - Register new Objectives capturing cautions, rule changes, or lessons from the previous run
+    BEFORE starting execution.
 ---
 
 # TaskOps — Project Management Skill for Claude Code
@@ -57,8 +71,8 @@ These are the most frequent errors — check each before proceeding:
 | Creating a new workflow without checking for duplicates | Always run `workflow list` before `workflow create` |
 | Skipping resource registration before marking task done | `resource add <T-ID> --path ./file --type output --desc "..."` then verify: `resource list --task <T-ID>` must be non-empty |
 | Not registering Objectives before execution starts | Before first task: `objective create --workflow <W-ID> --title "Goal" --milestone "Success criteria"` |
-| Not doing post-work Objective review | After final task: `objective list --workflow <W-ID>`, then register retrospective: `objective create --workflow <W-ID> --title "Retrospective: ..." --milestone "lessons"` |
-| Not clearing operations when restarting workflow | `workflow restart <W-ID>` always clears operations automatically; no extra flag needed |
+| Not doing post-work Objective review | After final task: `objective list --workflow <W-ID>`, update each status (done/cancelled), then register retrospective and next-run cautions as new Objectives |
+| Not clearing operations when restarting workflow | `workflow restart <W-ID>` resets tasks to 'todo' AND clears all operations (including errors); no extra flag needed |
 | Leaving a task `in_progress` when work stops | Always close with `op complete` or `task update --status interrupted` |
 
 ---
@@ -162,15 +176,56 @@ python -m cli resource list --workflow PRJ-AMP
 python -m cli resource list --workflow PRJ-AMP --type output
 ```
 
-### Re-execute a Workflow
+### Post-Work: Review Objectives and Register Results
 
-Reset a workflow's tasks to `todo` and run it again. Other workflows are unaffected:
+After completing the final task, review every Objective and record outcomes:
 
 ```bash
-# Restart a specific workflow (operations always cleared automatically)
+# List all objectives for the workflow
+python -m cli objective list --workflow PRJ-AMP
+
+# Mark achieved objectives as done
+python -m cli objective update PRJ-AMP-O001 --status done
+
+# Mark objectives that were not achieved
+python -m cli objective update PRJ-AMP-O002 --status cancelled
+
+# Register a retrospective objective: what was achieved, what was lacking, what to improve
+python -m cli objective create --workflow PRJ-AMP \
+  --title "Retrospective: Login API implementation" \
+  --milestone "Goals met: endpoints complete, tests pass. Issues: token refresh not implemented. Next: add refresh endpoint before auth epic is closed."
+
+# Register cautions or rule changes for the next run as objectives
+python -m cli objective create --workflow PRJ-AMP \
+  --title "Next run: always verify DB path before op start" \
+  --milestone "TASKOPS_DB must point to project root, not TaskOps repo root"
+
+# Submit workflow completion report
+python -m cli workflow report PRJ-AMP \
+  --summary "Login API complete" \
+  --details "All 5 endpoints implemented. JWT auth working. Refresh token deferred to next sprint."
+```
+
+### Re-execute a Workflow
+
+Reset a workflow's tasks to `todo` and run it again. Other workflows are unaffected.
+`workflow restart` clears **all operations and error records** for a clean slate.
+
+```bash
+# Step 1: Restart workflow (resets tasks + clears operations/errors)
 python -m cli workflow restart PRJ-AMP
 
-# Verify reset state
+# Step 2: Register new objectives BEFORE starting execution
+#   — cautions from previous run
+python -m cli objective create --workflow PRJ-AMP \
+  --title "Caution: skip workflow import if tasks already exist" \
+  --milestone "workflow import deletes all existing tasks; check workflow list first"
+#   — changed requirements
+python -m cli objective create --workflow PRJ-AMP \
+  --title "Changed: auth now uses OAuth2 instead of JWT" \
+  --milestone "Update login endpoint to use OAuth2 flow per new spec"
+
+# Step 3: Verify reset state
 python -m cli query show --workflow PRJ-AMP
 ```
 
@@ -207,9 +262,17 @@ python -m cli task create --workflow PRJ-AMP --parent AMP-E001 --title "Login AP
 python -m cli task create --workflow PRJ-AMP --parent AMP-T001 --title "JWT token generation"
 # → AMP-T002
 
-# Create Objectives
-python -m cli objective create --workflow PRJ-AMP --title "MVP Complete" --milestone "Core features done"
+# Create Objectives — verifiable end-goals (milestone = success criteria)
+python -m cli objective create --workflow PRJ-AMP --title "MVP Complete" --milestone "All CRUD endpoints pass integration tests"
 python -m cli objective create --workflow PRJ-AMP --title "Demo Day" --due-date 2026-04-01
+
+# Create Objectives — in-execution constraints and cautions (rules to follow during work)
+python -m cli objective create --workflow PRJ-AMP \
+  --title "Constraint: No mock DB in tests" \
+  --milestone "All tests hit real SQLite; mocks cause prod/test divergence"
+python -m cli objective create --workflow PRJ-AMP \
+  --title "Caution: workflow import replaces existing tasks" \
+  --milestone "Always run workflow list before workflow import to avoid data loss"
 ```
 
 ### Define Workflow
@@ -275,11 +338,20 @@ Hooks auto-record the following — no manual action needed:
 Record these **manually** with `op progress`:
 
 ```bash
-# Skill invoked
-python -m cli op progress <TASK_ID> --summary "Skill: code-reviewer — reviewing AMP-T003"
+# Tool used (Edit, Write, Bash, Read, ...)
+python -m cli op progress <TASK_ID> --tool Edit --summary "Edited auth middleware"
 
-# MCP / plugin called
-python -m cli op progress <TASK_ID> --summary "MCP: playwright — navigated to /login for E2E test"
+# Skill invoked
+python -m cli op progress <TASK_ID> --skill code-reviewer --summary "Skill: code-reviewer — reviewing AMP-T003"
+
+# MCP server called
+python -m cli op progress <TASK_ID> --mcp playwright --summary "MCP: playwright — navigated to /login for E2E test"
+
+# Plugin called
+python -m cli op progress <TASK_ID> --summary "Plugin: firecrawl — scraped https://example.com/docs"
+
+# Thinking step (extended thinking or key reasoning)
+python -m cli op progress <TASK_ID> --summary "Thinking: evaluated async vs sync handler trade-offs"
 
 # Key decision or plan change
 python -m cli op progress <TASK_ID> --summary "Decision: async handler over sync for auth endpoint"
@@ -349,9 +421,19 @@ python -m cli op interrupt AMP-T001 --summary "Blocked on external dependency"
 
 ### Handle Errors
 
+Errors are recorded in the **operations table** (type=`error`) — there is no separate errors table.
+
 ```bash
+# Record error with summary only
 python -m cli op error AMP-T001 --summary "Database connection failed"
+
+# Record error with full details (stack trace, context, etc.)
+python -m cli op error AMP-T001 \
+  --summary "SQLite constraint violation on task insert" \
+  --details "UNIQUE constraint failed: tasks.id — duplicate ID AMP-T003 generated"
 ```
+
+On workflow restart, all error records are cleared automatically along with operations.
 
 ---
 
