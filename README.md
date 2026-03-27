@@ -84,7 +84,7 @@ Add `skills/taskops.md` as a Claude Code skill via `npx skills add godstale/Task
 
 The skill is designed to be **invoked automatically** — the AI Agent will start TaskOps without an explicit user instruction whenever a plan is finalized and execution is about to begin.
 
-Configure hooks in `.claude/settings.json` to auto-record operations:
+Configure hooks in `.claude/settings.json` to auto-record operations and monitor agent activity:
 
 ```json
 {
@@ -93,6 +93,14 @@ Configure hooks in `.claude/settings.json` to auto-record operations:
       {
         "matcher": "Edit|Write|Bash",
         "command": "bash /path/to/TaskOps/hooks/on_tool_use.sh"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash /path/to/TaskOps/hooks/on_session_end.sh" }
+        ]
       }
     ]
   }
@@ -144,6 +152,7 @@ See [docs/usage/commands.md](docs/usage/commands.md) for the full command refere
 | `op log [--task/--workflow]` | View operation log with optional filters |
 | `resource add/list [--task/--workflow/--type]` | Resource management (auto-sets workflow_id) |
 | `query status/tasks/show` | Status queries and workflow details |
+| `monitor record/parse/report/summary` | Agent activity monitoring |
 | `setting set/get/list/delete` | Settings management |
 
 ## Requirements
