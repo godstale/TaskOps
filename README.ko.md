@@ -84,7 +84,7 @@ TaskBoard는 읽기 전용으로 동작하며 TaskOps DB에 쓰기 작업을 하
 
 이 skill은 **자동 호출**되도록 설계되어 있습니다 — 계획이 확정되고 실행이 시작되려 할 때, 사용자의 명시적 지시 없이도 AI Agent가 TaskOps를 자동으로 호출합니다.
 
-작업 이력을 자동 기록하려면 `.claude/settings.json`에 hooks를 설정하세요:
+작업 이력 자동 기록과 에이전트 활동 모니터링을 위해 `.claude/settings.json`에 hooks를 설정하세요:
 
 ```json
 {
@@ -93,6 +93,14 @@ TaskBoard는 읽기 전용으로 동작하며 TaskOps DB에 쓰기 작업을 하
       {
         "matcher": "Edit|Write|Bash",
         "command": "bash /path/to/TaskOps/hooks/on_tool_use.sh"
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          { "type": "command", "command": "bash /path/to/TaskOps/hooks/on_session_end.sh" }
+        ]
       }
     ]
   }
@@ -144,6 +152,7 @@ TaskOps/
 | `op log [--task/--workflow]` | 작업 이력 조회 (필터 지원) |
 | `resource add/list [--task/--workflow/--type]` | 리소스 관리 (workflow_id 자동 설정) |
 | `query status/tasks/show` | 상태 조회 및 워크플로우 상세 |
+| `monitor record/parse/report/summary` | 에이전트 활동 모니터링 |
 | `setting set/get/list/delete` | 설정 관리 |
 
 ## 요구사항

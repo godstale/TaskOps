@@ -160,6 +160,35 @@ TaskOps skill-only release. TaskBoard GUI extracted to a separate repository.
 
 - `TASKOPS.md.tmpl` — no longer needed after DB-only principle adoption
 
+## [0.2.7] - 2026-03-27
+
+### Added
+
+- `monitor` command — agent activity monitoring with four subcommands:
+  - `monitor record` — record a single agent event (called by hooks)
+  - `monitor parse` — parse a JSONL session file and import events into DB
+  - `monitor report` — show tool usage report, filterable by workflow
+  - `monitor summary` — show a per-session activity summary
+- `hooks/on_session_end.sh` — Stop hook that auto-imports JSONL session events into `agent_events` on session end
+- `skills/fragments/cli-reference.md` — dedicated CLI reference fragment (extracted from `SKILL.md` / `taskops.md` to reduce token cost)
+- `docs/monitoring-guide.md` — detailed monitoring and agent-tracking guide
+
+### Changed
+
+- `SKILL.md` and `skills/taskops.md` — compacted and restructured; heavy CLI tables moved to `skills/fragments/cli-reference.md`; skill body now references fragments for planning, execution, monitoring, and CLI details
+- `skills/fragments/monitoring-guide.md` — updated with `monitor` command usage and `agent_events` recording patterns
+- `skills/fragments/execution-guide.md` — updated with correct agent info for operations table; improved step-by-step guidance
+- `skills/fragments/planning-guide.md` and `setting-guide.md` — minor improvements for clarity
+- `hooks/on_tool_use.sh` — updated to record `agent_events` via `monitor record`
+
+### Fixed
+
+- Operations table in `skills/fragments/execution-guide.md` and `monitoring-guide.md` — corrected invalid agent-platform field values
+
+### Removed
+
+- DB schema v7 `agent_events` table — added in v7 then dropped in v8 (monitoring moved to JSONL parse approach via `monitor parse`)
+
 ## [Unreleased]
 
 - TBD
