@@ -6,8 +6,8 @@ from .utils import get_db
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('workflow', help='Manage workflow')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('workflow', help='Manage workflow', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     set_order = sub.add_parser('set-order', help='Set task execution order')

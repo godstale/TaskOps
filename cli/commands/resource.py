@@ -6,8 +6,8 @@ from .utils import get_db
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('resource', help='Manage resources')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('resource', help='Manage resources', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     add = sub.add_parser('add', help='Add a resource')

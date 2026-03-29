@@ -72,24 +72,20 @@ When user asks to "reset" or "start over", always ask which type:
 
 ## Phase 1: Initialization
 
-> **Path Rule:** Run `python -m cli` from the TaskOps repo directory. Set `TASKOPS_DB` to the absolute path of the project's DB file.
+> **Sticky Path Rule:** Run `python -m cli init` with `--db` to set the database path. This creates a `.taskops` file that stores the path, so subsequent commands don't need the `--db` flag.
 
 **Required setup sequence:**
 
 ```bash
-# 1. Set DB path and activate hooks
-export TASKOPS_DB=/absolute/path/to/project/taskops.db
+# 1. Initialize project and set sticky DB path
+python -m cli init --name "Project Name" --prefix PRJ --db ./taskops.db
+
+# 2. Activate hooks (optional but recommended)
 export TASKOPS_ACTIVE=1
 
-# 2. Initialize project (creates taskops.db only)
-python -m cli init --name "Project Name" --prefix PRJ
-
 # 3. Select or create a workflow — ALL ETS require a workflow_id
-#    List existing (resume scenario):
+#    (Subsequent commands use the DB path from .taskops automatically)
 python -m cli workflow list
-#    Check for existing workflows first (duplicate detection):
-python -m cli workflow list
-#    Create new (always include --description):
 python -m cli workflow create \
   --title "My Plan" \
   --description "Brief description of scope and intent"

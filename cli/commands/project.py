@@ -7,8 +7,8 @@ from .utils import get_db, get_project_id
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('project', help='Project-level management')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('project', help='Project-level management', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     # checkpoint — create or list

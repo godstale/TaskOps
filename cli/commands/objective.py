@@ -6,8 +6,8 @@ from .utils import get_db, get_project_id, next_id, get_workflow_prefix
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('objective', help='Manage objectives')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('objective', help='Manage objectives', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     create = sub.add_parser('create', help='Create a new objective')

@@ -7,8 +7,8 @@ from .utils import get_db, get_project_id, get_project_dir, next_id, get_workflo
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('plan', help='Manage project plan')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('plan', help='Manage project plan', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     update = sub.add_parser('update', help='Apply plan changes to DB')

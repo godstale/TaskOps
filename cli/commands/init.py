@@ -15,8 +15,8 @@ DEFAULT_SETTINGS = [
 ]
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('init', help='Initialize a new project')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('init', help='Initialize a new project', parents=parents or [])
     parser.add_argument('--name', required=True, help='Project name')
     parser.add_argument('--prefix', required=True, help='Task ID prefix (e.g. TOS)')
     parser.add_argument('--path', default='.', help='Project folder path (default: cwd)')
@@ -56,6 +56,19 @@ def handle(args):
     conn.commit()
 
     close_connection(conn)
+
+    # Save sticky DB path in .taskops file
+    try:
+        with open(os.path.join(project_path, '.taskops'), 'w', encoding='utf-8') as f:
+            # Store path relative to project folder if possible, or absolute
+            if db_path.startswith(project_path):
+                rel_path = os.path.relpath(db_path, project_path)
+                f.write(rel_path)
+            else:
+                f.write(db_path)
+    except Exception as e:
+        print(f"Warning: Could not save .taskops config file: {e}")
+
     print(f"Project '{args.name}' initialized.")
     print(f"  Prefix:  {args.prefix}")
     print(f"  DB:      {db_path}")

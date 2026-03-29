@@ -6,8 +6,8 @@ from .utils import get_db
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('op', help='Log operations')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('op', help='Log operations', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     start = sub.add_parser('start', help='Record task start')

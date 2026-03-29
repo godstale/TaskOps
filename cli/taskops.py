@@ -8,13 +8,17 @@ __version__ = "0.2.6"
 
 
 def build_parser():
+    # Shared base parser for arguments that should be available to all commands
+    base_parser = argparse.ArgumentParser(add_help=False)
+    base_parser.add_argument('--db', type=str, default=None,
+                        help='Path to SQLite DB file')
+
     parser = argparse.ArgumentParser(
         prog='taskops',
-        description='TaskOps - AI Agent project management tool (ETS-based)'
+        description='TaskOps - AI Agent project management tool (ETS-based)',
+        parents=[base_parser]
     )
     parser.add_argument('--version', action='version', version=f'taskops {__version__}')
-    parser.add_argument('--db', type=str, default=None,
-                        help='Path to SQLite DB file')
 
     subparsers = parser.add_subparsers(dest='command', help='Available commands')
 
@@ -30,17 +34,23 @@ def build_parser():
     from .commands.project import register as register_project
     from .commands.plan import register as register_plan
 
-    register_init(subparsers)
-    register_epic(subparsers)
-    register_task(subparsers)
-    register_objective(subparsers)
-    register_workflow(subparsers)
-    register_operation(subparsers)
-    register_resource(subparsers)
-    register_query(subparsers)
-    register_setting(subparsers)
-    register_project(subparsers)
-    register_plan(subparsers)
+    # Register each subcommand with the shared base_parser to allow --db after the command
+    def register_with_base(register_func, subparsers):
+        # We need to wrap the add_parser call or modify the register functions.
+        # Modifying register functions is cleaner for future additions.
+        register_func(subparsers, [base_parser])
+
+    register_init(subparsers, [base_parser])
+    register_epic(subparsers, [base_parser])
+    register_task(subparsers, [base_parser])
+    register_objective(subparsers, [base_parser])
+    register_workflow(subparsers, [base_parser])
+    register_operation(subparsers, [base_parser])
+    register_resource(subparsers, [base_parser])
+    register_query(subparsers, [base_parser])
+    register_setting(subparsers, [base_parser])
+    register_project(subparsers, [base_parser])
+    register_plan(subparsers, [base_parser])
 
     return parser
 

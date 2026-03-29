@@ -6,8 +6,8 @@ from .utils import get_db
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('setting', help='Manage settings')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('setting', help='Manage settings', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     s = sub.add_parser('set', help='Set a setting value')

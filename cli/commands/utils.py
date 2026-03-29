@@ -6,25 +6,43 @@ from ..db.connection import get_connection, close_connection
 
 
 def resolve_db_path(args):
-    """Resolve DB path from --db flag, TASKOPS_DB env var, or cwd search.
-    --db 플래그, TASKOPS_DB 환경변수, 또는 현재 디렉토리 탐색으로 DB 경로 결정.
+    """Resolve DB path from --db flag, TASKOPS_DB env var, .taskops config file, or cwd search.
+    --db 플래그, TASKOPS_DB 환경변수, .taskops 설정 파일, 또는 현재 디렉토리 탐색으로 DB 경로 결정.
     """
+    # 1. --db flag (highest priority)
     if hasattr(args, 'db') and args.db:
-        return args.db
+        return os.path.abspath(args.db)
+
+    # 2. TASKOPS_DB env var
     env_db = os.environ.get('TASKOPS_DB')
     if env_db:
-        return env_db
-    # Search for taskops.db in current directory and parents
+        return os.path.abspath(env_db)
+
+    # 3. Search for .taskops config file or taskops.db in current directory and parents
     cwd = os.getcwd()
     path = cwd
     while True:
-        candidate = os.path.join(path, 'taskops.db')
-        if os.path.exists(candidate):
-            return candidate
+        # Check for .taskops (sticky path config)
+        config_candidate = os.path.join(path, '.taskops')
+        if os.path.exists(config_candidate):
+            with open(config_candidate, 'r', encoding='utf-8') as f:
+                stored_path = f.read().strip()
+                if stored_path:
+                    # If it's a relative path, resolve it relative to the config file location
+                    if not os.path.isabs(stored_path):
+                        return os.path.abspath(os.path.join(path, stored_path))
+                    return os.path.abspath(stored_path)
+
+        # Check for taskops.db (default name)
+        db_candidate = os.path.join(path, 'taskops.db')
+        if os.path.exists(db_candidate):
+            return os.path.abspath(db_candidate)
+
         parent = os.path.dirname(path)
         if parent == path:
             break
         path = parent
+
     return os.path.join(cwd, 'taskops.db')
 
 
@@ -36,6 +54,40 @@ def get_db(args):
     if not os.path.exists(db_path):
         print(f"Error: DB not found at {db_path}. Run 'taskops init' first.")
         raise SystemExit(1)
+
+    # If --db flag was used, update the sticky config file
+    if hasattr(args, 'db') and args.db:
+        try:
+            cwd = os.getcwd()
+            # Try to find an existing .taskops file in parent directories
+            config_path = None
+            path = cwd
+            while True:
+                candidate = os.path.join(path, '.taskops')
+                if os.path.exists(candidate):
+                    config_path = candidate
+                    break
+                parent = os.path.dirname(path)
+                if parent == path:
+                    break
+                path = parent
+
+            # If not found, create in current directory
+            if not config_path:
+                config_path = os.path.join(cwd, '.taskops')
+
+            with open(config_path, 'w', encoding='utf-8') as f:
+                # Resolve to absolute path for stickiness
+                abs_db_path = os.path.abspath(db_path)
+                # Store relative path if it's under the same directory as config
+                config_dir = os.path.dirname(config_path)
+                if abs_db_path.startswith(config_dir):
+                    f.write(os.path.relpath(abs_db_path, config_dir))
+                else:
+                    f.write(abs_db_path)
+        except Exception:
+            pass  # Fail silently for config updates
+
     return get_connection(db_path)
 
 

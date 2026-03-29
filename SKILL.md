@@ -33,13 +33,14 @@ Trigger conditions (any one is sufficient):
 
 ## Phase 1: Initialization
 
-Initialize a new TaskOps project in the target directory.
+Initialize a new TaskOps project. Use `--db` to specify a custom database location; this path will be stored in a `.taskops` file and used automatically for all subsequent commands.
 
 ```bash
-python -m cli init --name "Project Name" --prefix PRJ --path ./project-path
+# Initialize and set sticky DB path
+python -m cli init --name "Project Name" --prefix PRJ --db ./my-project.db
 ```
 
-This creates `taskops.db` (SQLite database).
+This creates `taskops.db` (or your custom DB) and a `.taskops` config file.
 
 After init, select an existing workflow or create a new one — **all ETS must belong to a workflow**:
 

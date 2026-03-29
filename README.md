@@ -26,10 +26,10 @@ TaskOps gives AI Agents a structured way to manage multi-step projects across se
 git clone https://github.com/godstale/TaskOps.git
 cd my-project
 
-# Initialize TaskOps in your project
-python -m cli init --name "My Project" --prefix MYP --path .
+# Initialize TaskOps in your project (creates .taskops sticky config)
+python -m cli init --name "My Project" --prefix MYP --db custom.db
 
-# Create or select a workflow (required before any ETS creation)
+# Subsquent commands use custom.db automatically via .taskops
 python -m cli workflow create --title "My Plan"
 # → Workflow ID: MYP-W001
 

@@ -7,8 +7,8 @@ from .utils import get_db, get_project_dir
 from ..db.connection import close_connection
 
 
-def register(subparsers):
-    parser = subparsers.add_parser('query', help='Query status and generate reports')
+def register(subparsers, parents=None):
+    parser = subparsers.add_parser('query', help='Query status and generate reports', parents=parents or [])
     sub = parser.add_subparsers(dest='subcommand')
 
     status = sub.add_parser('status', help='Show project status summary')
